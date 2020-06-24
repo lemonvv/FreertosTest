@@ -27,6 +27,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */     
 #include "usart.h"
+#include "queue.h"
+#include "semphr.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,7 +48,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+/* 创建队列集合句柄 */
+QueueSetHandle_t xQueueSet = NULL;
+SemaphoreHandle_t  xSemaphore = NULL;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -68,6 +72,11 @@ const osThreadAttr_t LteTask_attributes = {
   .name = "LteTask",
   .priority = (osPriority_t) osPriorityNormal,
   .stack_size = 256 * 4
+};
+/* Definitions for myQueue01 */
+osMessageQueueId_t myQueue01Handle;
+const osMessageQueueAttr_t myQueue01_attributes = {
+  .name = "myQueue01"
 };
 /* Definitions for MutexPrintf */
 osMutexId_t MutexPrintfHandle;
@@ -98,6 +107,7 @@ const osSemaphoreAttr_t usart2_dma_txSem_attributes = {
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 extern void Test_Send_DMA(void);   
+extern void Test2_Send_DMA(void);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -113,7 +123,7 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-       
+
   /* USER CODE END Init */
   /* Create the mutex(es) */
   /* creation of MutexPrintf */
@@ -144,8 +154,23 @@ void MX_FREERTOS_Init(void) {
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
+  /* Create the queue(s) */
+  /* creation of myQueue01 */
+  myQueue01Handle = osMessageQueueNew (2, sizeof(uint8_t), &myQueue01_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
+    /* 如果不调用一次信号获取，在写进队列集合时会出错，不知道是不是封装的API BUG 原生API创建的二值信号没这个问题*/
+    osSemaphoreAcquire(usart1_dma_rxSemHandle, 1);
+    osSemaphoreAcquire(usart2_dma_rxSemHandle, 1);
+    /* 创建队列集合，长度为2 用于存放两个串口的二值信号量 */
+    xQueueSet = xQueueCreateSet(2);
+    if(xQueueAddToSet(usart1_dma_rxSemHandle, xQueueSet) != pdPASS)
+    {
+        BSP_Printf("error\r\n");
+    }
+    xQueueAddToSet(usart2_dma_rxSemHandle, xQueueSet);
+    //osSemaphoreRelease(usart1_dma_rxSemHandle);
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -160,6 +185,7 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+
   /* USER CODE END RTOS_THREADS */
 
 }
@@ -178,6 +204,7 @@ void StartDefaultTask(void *argument)
   for(;;)
   {
       osDelay(1000);
+      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
       //BSP_Printf("hello\r\n");
   }
   /* USER CODE END StartDefaultTask */
@@ -193,15 +220,32 @@ void StartDefaultTask(void *argument)
 void StartTaskLed(void *argument)
 {
   /* USER CODE BEGIN StartTaskLed */
+    QueueSetMemberHandle_t xActivatedMember;
   /* Infinite loop */
     for(;;)
     {
+        #if 0
         if(osSemaphoreAcquire(usart1_dma_rxSemHandle, osWaitForever) == osOK)
         {
             HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
             Test_Send_DMA();
         }
-        
+        #else
+        /* 多事件等待 等待两个串口的二值信号量 */
+        xActivatedMember = xQueueSelectFromSet(xQueueSet, osWaitForever);
+        if(xActivatedMember == usart1_dma_rxSemHandle)
+        {
+            osSemaphoreAcquire(xActivatedMember, 0);
+            HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+            Test_Send_DMA();
+        }
+        else if(xActivatedMember == usart2_dma_rxSemHandle)
+        {
+            osSemaphoreAcquire(xActivatedMember, 0);
+            HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+            Test2_Send_DMA();
+        }
+        #endif
         //osDelay(1);
     }
   /* USER CODE END StartTaskLed */
