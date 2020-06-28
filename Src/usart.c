@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#define UART_BUFFSIZE 2048 // 定义缓冲区的大小
+
 typedef struct
 {
     uint16_t Uart_SendLens; //待发送数据长度
@@ -38,12 +38,7 @@ typedef struct
 } UART_STR;
 UART_STR USART1_Que;
 
-typedef struct
-{
-    uint16_t len;
-    uint8_t rxbuf[UART_BUFFSIZE];
-    uint8_t txbuf[UART_BUFFSIZE];
-} USART_DATA_T;
+
 USART_DATA_T Usart1_Data =
 {
     .len = 0,
@@ -400,6 +395,32 @@ void TaskSend(void)
     HAL_UART_Transmit_DMA(&huart1, (uint8_t *)"Hello\r\n", 7);
 }
 
+void clean_usart_data(uint8_t COM)
+{
+    if(COM == 1)
+    {
+        memset(Usart1_Data.rxbuf, 0, sizeof(Usart1_Data.rxbuf));
+        Usart1_Data.len = 0;
+    }
+    else if(COM == 2)
+    {
+        memset(Usart2_Data.rxbuf, 0, sizeof(Usart2_Data.rxbuf));
+        Usart2_Data.len = 0;
+    }
+    
+}
+USART_DATA_T *get_usart_data_fifo(uint8_t COM)
+{
+    if(COM == 1)
+    {
+        return &Usart1_Data;
+    }
+    else if(COM == 2)
+    {
+        return &Usart2_Data;
+    }
+    return 0;
+}
 extern osMutexId_t MutexPrintfHandle;
 
 void BSP_Printf(const char *format, ...)
@@ -407,13 +428,13 @@ void BSP_Printf(const char *format, ...)
     uint16_t uLen;
     va_list arg;
     //uint8_t tx_buf[300];
-
+    /* 这不知道还需不需要互斥， 因为在DMA发送时启用了二值信号量，先不管 */
+    osMutexWait(MutexPrintfHandle, osWaitForever);
     va_start(arg, format);
     uLen = vsnprintf((char *)Usart1_Data.txbuf, sizeof(Usart1_Data.txbuf), (char *)format, arg);
     va_end(arg);
 
-    /* 这不知道还需不需要互斥， 因为在DMA发送时启用了二值信号量，先不管 */
-    osMutexWait(MutexPrintfHandle, osWaitForever);
+    
 
     Usart1_DMA_Send_Data(Usart1_Data.txbuf, uLen);
 

@@ -62,6 +62,10 @@ void Error_Handler(void);
 #define LED0_GPIO_Port GPIOA
 #define LED1_Pin GPIO_PIN_7
 #define LED1_GPIO_Port GPIOA
+#define EC20_RST_KEY_Pin GPIO_PIN_4
+#define EC20_RST_KEY_GPIO_Port GPIOC
+#define EC20_POWER_KEY_Pin GPIO_PIN_5
+#define EC20_POWER_KEY_GPIO_Port GPIOC
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

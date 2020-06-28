@@ -29,6 +29,7 @@
 #include "usart.h"
 #include "queue.h"
 #include "semphr.h"
+#include "lte.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,7 +51,7 @@
 /* USER CODE BEGIN Variables */
 /* 创建队列集合句柄 */
 QueueSetHandle_t xQueueSet = NULL;
-SemaphoreHandle_t  xSemaphore = NULL;
+SemaphoreHandle_t xSemaphore = NULL;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -71,7 +72,7 @@ osThreadId_t LteTaskHandle;
 const osThreadAttr_t LteTask_attributes = {
   .name = "LteTask",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 256 * 4
+  .stack_size = 512 * 4
 };
 /* Definitions for myQueue01 */
 osMessageQueueId_t myQueue01Handle;
@@ -106,7 +107,7 @@ const osSemaphoreAttr_t usart2_dma_txSem_attributes = {
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-extern void Test_Send_DMA(void);   
+extern void Test_Send_DMA(void);
 extern void Test2_Send_DMA(void);
 /* USER CODE END FunctionPrototypes */
 
@@ -130,7 +131,7 @@ void MX_FREERTOS_Init(void) {
   MutexPrintfHandle = osMutexNew(&MutexPrintf_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
+    /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
   /* Create the semaphores(s) */
@@ -147,11 +148,11 @@ void MX_FREERTOS_Init(void) {
   usart2_dma_txSemHandle = osSemaphoreNew(1, 1, &usart2_dma_txSem_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+    /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
+    /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the queue(s) */
@@ -159,13 +160,13 @@ void MX_FREERTOS_Init(void) {
   myQueue01Handle = osMessageQueueNew (2, sizeof(uint8_t), &myQueue01_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+    /* add queues, ... */
     /* 如果不调用一次信号获取，在写进队列集合时会出错，不知道是不是封装的API BUG 原生API创建的二值信号没这个问题*/
     osSemaphoreAcquire(usart1_dma_rxSemHandle, 1);
     osSemaphoreAcquire(usart2_dma_rxSemHandle, 1);
     /* 创建队列集合，长度为2 用于存放两个串口的二值信号量 */
     xQueueSet = xQueueCreateSet(2);
-    if(xQueueAddToSet(usart1_dma_rxSemHandle, xQueueSet) != pdPASS)
+    if (xQueueAddToSet(usart1_dma_rxSemHandle, xQueueSet) != pdPASS)
     {
         BSP_Printf("error\r\n");
     }
@@ -184,7 +185,7 @@ void MX_FREERTOS_Init(void) {
   LteTaskHandle = osThreadNew(StartTaskLte, NULL, &LteTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+    /* add threads, ... */
 
   /* USER CODE END RTOS_THREADS */
 
@@ -200,13 +201,13 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
-  /* Infinite loop */
-  for(;;)
-  {
-      osDelay(1000);
-      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-      //BSP_Printf("hello\r\n");
-  }
+    /* Infinite loop */
+    for (;;)
+    {
+        osDelay(500);
+        HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+        //BSP_Printf("hello\r\n");
+    }
   /* USER CODE END StartDefaultTask */
 }
 
@@ -221,31 +222,31 @@ void StartTaskLed(void *argument)
 {
   /* USER CODE BEGIN StartTaskLed */
     QueueSetMemberHandle_t xActivatedMember;
-  /* Infinite loop */
-    for(;;)
+    /* Infinite loop */
+    for (;;)
     {
-        #if 0
+#if 0
         if(osSemaphoreAcquire(usart1_dma_rxSemHandle, osWaitForever) == osOK)
         {
             HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
             Test_Send_DMA();
         }
-        #else
+#else
         /* 多事件等待 等待两个串口的二值信号量 */
         xActivatedMember = xQueueSelectFromSet(xQueueSet, osWaitForever);
-        if(xActivatedMember == usart1_dma_rxSemHandle)
+        if (xActivatedMember == usart1_dma_rxSemHandle)
         {
             osSemaphoreAcquire(xActivatedMember, 0);
             HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
             Test_Send_DMA();
         }
-        else if(xActivatedMember == usart2_dma_rxSemHandle)
+        else if (xActivatedMember == usart2_dma_rxSemHandle)
         {
             osSemaphoreAcquire(xActivatedMember, 0);
             HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
-            Test2_Send_DMA();
+            //Test2_Send_DMA();
         }
-        #endif
+#endif
         //osDelay(1);
     }
   /* USER CODE END StartTaskLed */
@@ -261,17 +262,18 @@ void StartTaskLed(void *argument)
 void StartTaskLte(void *argument)
 {
   /* USER CODE BEGIN StartTaskLte */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+    /* Infinite loop */
+    for (;;)
+    {
+        ec20_run();
+        //osDelay(1);
+    }
   /* USER CODE END StartTaskLte */
 }
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-     
+
 /* USER CODE END Application */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

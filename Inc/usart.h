@@ -34,20 +34,32 @@ extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN Private defines */
-
+#define UART_BUFFSIZE 2048 // 定义缓冲区的大小
 /* USER CODE END Private defines */
 
 void MX_USART1_UART_Init(void);
 void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+
+typedef struct
+{
+    __IO uint16_t len;
+    uint8_t rxbuf[UART_BUFFSIZE];
+    uint8_t txbuf[UART_BUFFSIZE];
+} USART_DATA_T;
+
 void Usart_IRQen_Init(void);
 void Usart_IDLE_Callback(UART_HandleTypeDef *huart);
 void Usart1_DMA_Send_Data(uint8_t *buf, uint16_t len);
+void Usart2_DMA_Send_Data(uint8_t *buf, uint16_t len);
 void Usart_Dma_TxDone_Callback(UART_HandleTypeDef *huart);
 void Test_Send_DMA(void);
 void TaskSend(void);
 void BSP_Printf(const char *format,...);
+void clean_usart_data(uint8_t COM);
+
+USART_DATA_T *get_usart_data_fifo(uint8_t COM);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
