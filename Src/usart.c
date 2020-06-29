@@ -26,19 +26,33 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+/* typedef struct
+{
+    uint8_t *rxbuf;
+    uint8_t *txbuf;
+    __IO uint16_t txWrite;
+    __IO uint16_t txRead;
+    __IO uint16_t txLen;
+    __IO uint16_t rxWrite;
+    __IO uint16_t rxRead;
+    __IO uint16_t rxLen;
+}UART_T; */
 
 typedef struct
 {
-    uint16_t Uart_SendLens; //待发送数据长度
-    uint16_t Uart_RecvLens; //接收到的数据长度
-    uint16_t RecvQue_Head;  //新接收数据环形队列头指针
-    uint16_t RecvQue_Tail;  //新接收数据环形队列尾指针
-    uint8_t Uart_SentBuff[UART_BUFFSIZE];
-    uint8_t Uart_RecvBuff[UART_BUFFSIZE];
-} UART_STR;
-UART_STR USART1_Que;
+    uint8_t *buf;
+    __IO uint16_t Write;
+    __IO uint16_t Read;
+    __IO uint16_t Len;
+}FIFO_T;
 
+typedef struct
+{
+    FIFO_T rx;
+    FIFO_T tx;
+}UART_T;
 
+UART_T g_uart1;
 USART_DATA_T Usart1_Data =
 {
     .len = 0,
@@ -48,6 +62,11 @@ USART_DATA_T Usart2_Data =
 {
     .len = 0,
 };
+
+uint8_t com_get_char(uint8_t * _byte)
+{
+
+}
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart1;
@@ -364,6 +383,10 @@ void Usart_Dma_TxDone_Callback(UART_HandleTypeDef *huart)
     }
 }
 
+void Usart1_Send_Str(char *str)
+{
+    Usart1_DMA_Send_Data((uint8_t *)str, strlen(str));
+}
 void Usart1_DMA_Send_Data(uint8_t *buf, uint16_t len)
 {
     if (len == 0)

@@ -35,6 +35,18 @@ extern UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN Private defines */
 #define UART_BUFFSIZE 2048 // 定义缓冲区的大小
+
+/* 定义端口号 */
+typedef enum
+{
+	COM1 = 0,	/* USART1 */
+	COM2 = 1,	/* USART2 */
+	COM3 = 2,	/* USART3 */
+	COM4 = 3,	/* UART4 */
+	COM5 = 4,	/* UART5 */
+	COM6 = 5,	/* USART6 */
+}COM_PORT_E;
+
 /* USER CODE END Private defines */
 
 void MX_USART1_UART_Init(void);
@@ -57,6 +69,7 @@ void Usart_Dma_TxDone_Callback(UART_HandleTypeDef *huart);
 void Test_Send_DMA(void);
 void TaskSend(void);
 void BSP_Printf(char *format, ...);
+void Usart1_Send_Str(char *str);
 void clean_usart_data(uint8_t COM);
 
 USART_DATA_T *get_usart_data_fifo(uint8_t COM);

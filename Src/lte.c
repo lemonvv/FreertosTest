@@ -34,30 +34,34 @@ uint8_t ec20_send_cmd(char *cmd, char *ack, char *ack2, char *err, uint32_t _tim
     osDelay(10);
     /* 获取当前的系统时间， 用于超时判断 */
     vTaskSetTimeOutState(&Timeout);
-    BSP_Printf("[%d] %s\r\n", __LINE__, cmd);
+    //BSP_Printf("[%d] %s\r\n", __LINE__, cmd);
+    Usart1_Send_Str(cmd);
     while (1)
     {
         if (usart_data->len > 0)
         {
             if (strstr((char *)usart_data->rxbuf, ack))
             {
-                BSP_Printf("[%d]%s\r\n", __LINE__, usart_data->rxbuf);
-                
+                //BSP_Printf("[%d]%s\r\n", __LINE__, usart_data->rxbuf);
+                Usart1_Send_Str((char *)usart_data->rxbuf);
                 return TRUE;
             }
             else if (strlen(ack2) > 0 && strstr((char *)usart_data->rxbuf, ack2))
             {
-                BSP_Printf("[%d]%s\r\n", __LINE__, usart_data->rxbuf);
+                //BSP_Printf("[%d]%s\r\n", __LINE__, usart_data->rxbuf);
+                Usart1_Send_Str((char *)usart_data->rxbuf);
                 return TRUE;
             }
             else if (strstr((char *)usart_data->rxbuf, "ERROR"))
             {
-                BSP_Printf("[%d]%s\r\n", __LINE__, usart_data->rxbuf);
+                //BSP_Printf("[%d]%s\r\n", __LINE__, usart_data->rxbuf);
+                Usart1_Send_Str((char *)usart_data->rxbuf);
                 return FALSE;
             }
             else if (strlen(err) > 0 && (strstr((char *)usart_data->rxbuf, err) != NULL))
             {
-                BSP_Printf("[%d ERR:]%s\r\n", __LINE__, usart_data->rxbuf);
+                //BSP_Printf("[%d ERR:]%s\r\n", __LINE__, usart_data->rxbuf);
+                Usart1_Send_Str((char *)usart_data->rxbuf);
                 return FALSE;
             }
             else
@@ -70,8 +74,9 @@ uint8_t ec20_send_cmd(char *cmd, char *ack, char *ack2, char *err, uint32_t _tim
         {
             /* 超时 */
             
-            BSP_Printf("[ERR:] Timeout\r\n");
-            osDelay(10);
+            //BSP_Printf("[ERR:] Timeout\r\n");
+            Usart1_Send_Str("Timeout\r\n");
+            //osDelay(10);
             return FALSE;
         }
         //USART1->DR = 'A';
