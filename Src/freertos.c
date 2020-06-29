@@ -72,7 +72,7 @@ osThreadId_t LteTaskHandle;
 const osThreadAttr_t LteTask_attributes = {
   .name = "LteTask",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 512 * 4
+  .stack_size = 256 * 4
 };
 /* Definitions for myQueue01 */
 osMessageQueueId_t myQueue01Handle;
@@ -168,7 +168,7 @@ void MX_FREERTOS_Init(void) {
     xQueueSet = xQueueCreateSet(2);
     if (xQueueAddToSet(usart1_dma_rxSemHandle, xQueueSet) != pdPASS)
     {
-        BSP_Printf("error\r\n");
+        
     }
     xQueueAddToSet(usart2_dma_rxSemHandle, xQueueSet);
     //osSemaphoreRelease(usart1_dma_rxSemHandle);
@@ -238,7 +238,7 @@ void StartTaskLed(void *argument)
         {
             osSemaphoreAcquire(xActivatedMember, 0);
             HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
-            Test_Send_DMA();
+            //Test_Send_DMA();
         }
         else if (xActivatedMember == usart2_dma_rxSemHandle)
         {

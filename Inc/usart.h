@@ -56,7 +56,7 @@ void Usart2_DMA_Send_Data(uint8_t *buf, uint16_t len);
 void Usart_Dma_TxDone_Callback(UART_HandleTypeDef *huart);
 void Test_Send_DMA(void);
 void TaskSend(void);
-void BSP_Printf(const char *format,...);
+void BSP_Printf(char *format, ...);
 void clean_usart_data(uint8_t COM);
 
 USART_DATA_T *get_usart_data_fifo(uint8_t COM);

@@ -312,6 +312,7 @@ void Usart_IRQen_Init(void)
     CLEAR_BIT(USART2->SR, USART_SR_TC);   /* 清除 TC 发送完成标志 */
     CLEAR_BIT(USART2->SR, USART_SR_RXNE); /* 清除 RXNE 接收标志 */
     CLEAR_BIT(USART2->SR, USART_SR_IDLE);
+    
 }
 
 extern osSemaphoreId_t usart1_dma_rxSemHandle;
@@ -355,6 +356,7 @@ void Usart_Dma_TxDone_Callback(UART_HandleTypeDef *huart)
     if (huart->Instance == USART1)
     {
         osSemaphoreRelease(usart1_dma_txSemHandle);
+        
     }
     else if (huart->Instance == USART2)
     {
@@ -423,21 +425,23 @@ USART_DATA_T *get_usart_data_fifo(uint8_t COM)
 }
 extern osMutexId_t MutexPrintfHandle;
 
-void BSP_Printf(const char *format, ...)
+/* 
+    连续调用发送会造成DMA缓冲区数据被覆盖的问题，
+    这个互斥只是Printf互斥，但是这时DMA数据还不一定已经发送完成，所以数据有可能被覆盖 
+*/
+void BSP_Printf(char *format, ...)
 {
     uint16_t uLen;
     va_list arg;
-    //uint8_t tx_buf[300];
+    //uint8_t tx_buf[100];
     /* 这不知道还需不需要互斥， 因为在DMA发送时启用了二值信号量，先不管 */
     osMutexWait(MutexPrintfHandle, osWaitForever);
     va_start(arg, format);
     uLen = vsnprintf((char *)Usart1_Data.txbuf, sizeof(Usart1_Data.txbuf), (char *)format, arg);
+    //uLen = vsnprintf((char *)tx_buf, sizeof(tx_buf), (char *)format, arg);
     va_end(arg);
-
-    
-
     Usart1_DMA_Send_Data(Usart1_Data.txbuf, uLen);
-
+    //Usart1_DMA_Send_Data(tx_buf, uLen);
     osMutexRelease(MutexPrintfHandle);
 }
 

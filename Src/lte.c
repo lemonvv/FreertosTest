@@ -31,6 +31,7 @@ uint8_t ec20_send_cmd(char *cmd, char *ack, char *ack2, char *err, uint32_t _tim
     USART_DATA_T *usart_data = get_usart_data_fifo(2);
     /* 发送指令 */
     Usart2_DMA_Send_Data((uint8_t *)cmd, strlen(cmd));
+    osDelay(10);
     /* 获取当前的系统时间， 用于超时判断 */
     vTaskSetTimeOutState(&Timeout);
     BSP_Printf("[%d] %s\r\n", __LINE__, cmd);
@@ -40,23 +41,23 @@ uint8_t ec20_send_cmd(char *cmd, char *ack, char *ack2, char *err, uint32_t _tim
         {
             if (strstr((char *)usart_data->rxbuf, ack))
             {
-                //BSP_Printf("[%d]%s\r\n", __LINE__, usart_data->rxbuf);
+                BSP_Printf("[%d]%s\r\n", __LINE__, usart_data->rxbuf);
                 
                 return TRUE;
             }
             else if (strlen(ack2) > 0 && strstr((char *)usart_data->rxbuf, ack2))
             {
-                //BSP_Printf("[%d]%s\r\n", __LINE__, usart_data->rxbuf);
+                BSP_Printf("[%d]%s\r\n", __LINE__, usart_data->rxbuf);
                 return TRUE;
             }
             else if (strstr((char *)usart_data->rxbuf, "ERROR"))
             {
-                //BSP_Printf("[%d]%s\r\n", __LINE__, usart_data->rxbuf);
+                BSP_Printf("[%d]%s\r\n", __LINE__, usart_data->rxbuf);
                 return FALSE;
             }
-            else if (strlen(err) > 0 && strstr((char *)usart_data->rxbuf, err))
+            else if (strlen(err) > 0 && (strstr((char *)usart_data->rxbuf, err) != NULL))
             {
-                //BSP_Printf("[ERR:]%s\r\n", usart_data->rxbuf);
+                BSP_Printf("[%d ERR:]%s\r\n", __LINE__, usart_data->rxbuf);
                 return FALSE;
             }
             else
@@ -68,12 +69,13 @@ uint8_t ec20_send_cmd(char *cmd, char *ack, char *ack2, char *err, uint32_t _tim
         if (xTaskCheckForTimeOut(&Timeout, &xMaxBlockTime) == pdTRUE)
         {
             /* 超时 */
+            
+            BSP_Printf("[ERR:] Timeout\r\n");
             osDelay(10);
-            //BSP_Printf("[ERR:] Timeout\r\n");
             return FALSE;
         }
         //USART1->DR = 'A';
-        osDelay(1);
+        osDelay(10);
     }
 }
 
@@ -140,12 +142,10 @@ uint8_t set_ec20_at_power_off(void)
 const char SOCKEA_CONNECT_ID[] = "1";
 const char LOCA_PORT[] = "5555"; //建立连接的本地端口
 const char Access_Mode[] = "2";  //0为非透传Buffer模式， 1为非透传Push模式，2为透传模式
-const char *IP = "127.0.0.1";
-const char *PORT = "8000";
 uint8_t ec20_tcp_connect(char *ip, char *port, uint32_t _timeout)
 {
     char str[50];
-    sprintf(str, "AT+QIOPEN=%s,%s,\"TCP\",\"%s\",%s,%s,%s\r\n", CONTEXT_ID, SOCKEA_CONNECT_ID, IP, PORT, LOCA_PORT, Access_Mode);
+    sprintf(str, "AT+QIOPEN=%s,%s,\"TCP\",\"%s\",%s,%s,%s\r\n", CONTEXT_ID, SOCKEA_CONNECT_ID, ip, port, LOCA_PORT, Access_Mode);
     return ec20_send_cmd(str, "CONNECT", "", "NO CARRIER", _timeout);
 }
 
@@ -156,8 +156,6 @@ void get_ntrip_server(char *dst, char *mountpoint, char *username, char *pwd)
     len = sprintf(dst, "SOURCE %s /%s\r\n", pwd, mountpoint);
     len += sprintf((dst+len), "Source-Agent: NTRIP HUASINtripServerCMD/1.0\r\n\r\n");
 
-    //SEND_DEBUG("user: %s\r\n", user);
-    //SEND_DEBUG("%s", dst);
 }
 
 /* ntrip server 连接 */
@@ -278,10 +276,11 @@ void ec20_run(void)
             EC20_RUNE = EC20_ConnectInit_R;
         break;
     case EC20_ConnectInit_R:
-        if (ec20_tcp_connect("127.0.0.1", "8000", 5000) == TRUE)
+        
             EC20_RUNE = EC20_Connect_R;
         break;
     case EC20_Connect_R:
+        if (ec20_tcp_connect("127.0.0.1", "8000", 5000) == TRUE)
         EC20_RUNE = EC20_Verify_R;
         break;
     case EC20_Verify_R:
