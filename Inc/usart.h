@@ -32,8 +32,10 @@
 
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN Private defines */
+
 #define UART_BUFFSIZE 2048 // 定义缓冲区的大小
 
 /* 定义端口号 */
@@ -51,6 +53,7 @@ typedef enum
 
 void MX_USART1_UART_Init(void);
 void MX_USART2_UART_Init(void);
+void MX_USART3_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
