@@ -15,4 +15,9 @@ typedef struct
     __IO uint16_t len;
     uint16_t bufSize;
 }FIFO_T;
+
+uint8_t queue_read_char(FIFO_T *ft, uint8_t * _byte);
+uint8_t queue_write_char(FIFO_T *ft, uint8_t *_byte);
+uint16_t queue_get_len(FIFO_T *ft);
+void queue_clean_fifo(FIFO_T *ft);
 #endif

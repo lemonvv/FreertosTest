@@ -95,6 +95,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+    usart_val_int();
     Usart_IRQen_Init();
   /* USER CODE END 2 */
 

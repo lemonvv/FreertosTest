@@ -27,7 +27,7 @@
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "fifo.h"
 /* USER CODE END Includes */
 
 extern UART_HandleTypeDef huart1;
@@ -64,6 +64,19 @@ typedef struct
     uint8_t txbuf[UART_BUFFSIZE];
 } USART_DATA_T;
 
+
+#define UBUFSIZE 1024
+typedef struct
+{
+    USART_TypeDef *uart;
+    FIFO_T rx;
+    FIFO_T tx;
+} UART_T;
+
+extern UART_T g_uart1;
+extern UART_T g_uart2;
+extern UART_T g_uart3;
+
 void Usart_IRQen_Init(void);
 void Usart_IDLE_Callback(UART_HandleTypeDef *huart);
 void Usart1_DMA_Send_Data(uint8_t *buf, uint16_t len);
@@ -74,8 +87,14 @@ void TaskSend(void);
 void BSP_Printf(char *format, ...);
 void Usart1_Send_Str(char *str);
 void clean_usart_data(uint8_t COM);
-
+void usart_val_int(void);
+void uart_rxcallback(UART_T *_uartp);
 USART_DATA_T *get_usart_data_fifo(uint8_t COM);
+
+void usart_send_data_queue(UART_T *_wuart, UART_T *_ruart);
+void usart_send_data(UART_T *_wuart, uint8_t *buf, uint16_t len);
+void usart_write_buf(UART_T *_ruart, uint8_t *buf, uint16_t len);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
