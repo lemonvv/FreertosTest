@@ -300,15 +300,17 @@ void W25QXX_Write_NoCheck(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByte
 //pBuffer:数据存储区
 //WriteAddr:开始写入的地址(24bit)
 //NumByteToWrite:要写入的字节数(最大65535)
-uint8_t W25QXX_BUFFER[4096];
+//uint8_t W25QXX_BUFFER[4096];
 void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
 {
     uint32_t secpos;
     uint16_t secoff;
     uint16_t secremain;
+    #if 0
     uint16_t i;
     uint8_t *W25QXX_BUF;
     W25QXX_BUF = W25QXX_BUFFER;
+    #endif
     secpos = WriteAddr / 4096; //扇区地址
     secoff = WriteAddr % 4096; //在扇区内的偏移
     secremain = 4096 - secoff; //扇区剩余空间大小
@@ -317,6 +319,7 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
         secremain = NumByteToWrite; //不大于4096个字节
     while (1)
     {
+        #if 0
         W25QXX_Read(W25QXX_BUF, secpos * 4096, 4096); //读出整个扇区的内容
         for (i = 0; i < secremain; i++)               //校验数据
         {
@@ -333,6 +336,7 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
             W25QXX_Write_NoCheck(W25QXX_BUF, secpos * 4096, 4096); //写入整个扇区
         }
         else
+        #endif
             W25QXX_Write_NoCheck(pBuffer, WriteAddr, secremain); //写已经擦除了的,直接写入扇区剩余区间.
         if (NumByteToWrite == secremain)
             break; //写入结束了

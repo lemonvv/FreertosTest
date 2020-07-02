@@ -94,7 +94,7 @@ USART_DATA_T *get_usart_data_fifo(uint8_t COM);
 void usart_send_data_queue(UART_T *_wuart, UART_T *_ruart);
 void usart_send_data(UART_T *_wuart, uint8_t *buf, uint16_t len);
 void usart_write_buf(UART_T *_ruart, uint8_t *buf, uint16_t len);
-
+void Usart1_DMA_Send_Que(void);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

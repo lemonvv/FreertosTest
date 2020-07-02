@@ -5,6 +5,7 @@
 char USER_Path[4] = "0:"; /* USER logical drive path */
 
 FATFS fs;
+BYTE work[1024];
 void mount_disk(void)
 {
     uint8_t res = f_mount(&fs, USER_Path, 0);
@@ -12,47 +13,47 @@ void mount_disk(void)
     {
         if(res == FR_NO_FILESYSTEM)
         {
-            BSP_Printf("FR_NO_FILESYSTEM\n");
+            Usart1_Send_Str("FR_NO_FILESYSTEM\n");
             res = f_mkfs(USER_Path, FM_ANY, 1, &work, 4096);
             if(res != FR_OK)
             {
-                BSP_Printf("failed with\n");
+                Usart1_Send_Str("failed with\n");
             }
             else
             {
-                BSP_Printf("Fatfs Init OK\n");
+                Usart1_Send_Str("Fatfs Init OK\n");
                 res = f_mount(&fs, USER_Path, 0);
                 if(res != FR_OK)
                 {
-                    BSP_Printf("failed error\n");
+                    Usart1_Send_Str("failed error\n");
                 }
                 else
                 {
-                    BSP_Printf("MOUNT OK\n");
+                    Usart1_Send_Str("MOUNT OK 2\n");
                 }
             }
         }
         else
         {
-            BSP_Printf("F error\n");
+            Usart1_Send_Str("F error\n");
         }
         return;
     }
-    BSP_Printf("MOUNT OK\n");
+    Usart1_Send_Str("MOUNT OK 1\n");
 }
 
 void format_disk(void)
 {
     uint8_t res = 0;
-    BSP_Printf("PROCESSING...\n");
+    Usart1_Send_Str("PROCESSING...\n");
     res = f_mkfs(USER_Path, FM_ANY, 1, &work, 4096);
     if (res == FR_OK)
     {
-        BSP_Printf("OK!\n");
+        Usart1_Send_Str("OK!\n");
     }
     else
     {
-        BSP_Printf("failed with: %d\n", res);
+        Usart1_Send_Str("failed with\n");
     }
 }
 
@@ -61,16 +62,17 @@ void create_file(void)
     FIL file;
     FIL *pf = &file;
     uint8_t res;
-
+    Usart1_Send_Str("Open\n");
     res = f_open(pf, "0:/test.txt", FA_OPEN_ALWAYS | FA_WRITE);
+    Usart1_Send_Str("Open 2\n");
     if (res == FR_OK)
     {
-        BSP_Printf("creat ok\n");
+        Usart1_Send_Str("creat ok\n");
     }
     else
     {
-        BSP_Printf("creat failed\n");
-        BSP_Printf("error code: %d\n", res);
+        Usart1_Send_Str("creat failed\n");
+        Usart1_Send_Str("error code:\n");
     }
 
     f_printf(pf, "hello fatfs!\n");
@@ -78,8 +80,8 @@ void create_file(void)
     res = f_close(pf);
     if (res != FR_OK)
     {
-        BSP_Printf("close file error\n");
-        BSP_Printf("error code: %d\n", res);
+        Usart1_Send_Str("close file error\n");
+        Usart1_Send_Str("error code: \n");
     }
 }
 
@@ -94,14 +96,13 @@ void get_disk_info(void)
     if (res == FR_OK)
     {
         /* Print free space in unit of MB (assuming 4096 bytes/sector) */
-        BSP_Printf("%d KB Total Drive Space.\n"
-               "%d KB Available Space.\n",
-               ((fls->n_fatent - 2) * fls->csize) * 4, (fre_clust * fls->csize) * 4);
+        //Usart1_Send_Str(((fls->n_fatent - 2) * fls->csize) * 4, (fre_clust * fls->csize) * 4);
+        Usart1_Send_Str("OK\n");
     }
     else
     {
-        BSP_Printf("get disk info error\n");
-        BSP_Printf("error code: %d\n", res);
+        Usart1_Send_Str("get disk info error\n");
+        Usart1_Send_Str("error code: \n");
     }
 }
 
@@ -115,25 +116,26 @@ void read_file(void)
     res = f_open(&file, "0:/test.txt", FA_READ);
     if (res != FR_OK)
     {
-        BSP_Printf("open error: %d\n", res);
+        Usart1_Send_Str("open error: \n");
         return;
     }
     f_read(&file, rbuf, 20, &bw);
-    BSP_Printf("%s\n", rbuf);
+    Usart1_Send_Str((char *)rbuf);
 
     res = f_close(&file);
     if (res != FR_OK)
     {
-        BSP_Printf("close file error\n");
-        BSP_Printf("error code: %d\n", res);
+        Usart1_Send_Str("close file error\n");
+        Usart1_Send_Str("error code: \n");
     }
 }
 
 void Test_Txt(void)
 {
     mount_disk();
+    Usart1_Send_Str("last\n");
     create_file();
-    read_file();
+    //read_file();
 
 }
 

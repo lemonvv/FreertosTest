@@ -30,6 +30,7 @@
 #include "queue.h"
 #include "semphr.h"
 #include "lte.h"
+#include "txt.h"
 
 /* USER CODE END Includes */
 
@@ -250,6 +251,7 @@ void StartTaskLed(void *argument)
             osSemaphoreAcquire(xActivatedMember, 0);
             HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
             USART_DATA_T *udata = get_usart_data_fifo(1);
+            //Usart1_DMA_Send_Data(udata->rxbuf, udata->len);
             usart_write_buf(&g_uart1, udata->rxbuf, udata->len);
             //Test_Send_DMA();
         }
@@ -277,13 +279,17 @@ void StartTaskLed(void *argument)
 void StartTaskLte(void *argument)
 {
   /* USER CODE BEGIN StartTaskLte */
-    osDelay(5000);
+    //osDelay(5000);
     Test_Txt();
     /* Infinite loop */
+    osDelay(100);
+    BSP_Printf("TTTT\r\n");
+    osDelay(100);
+    BSP_Printf("EEEE\r\n");
     for (;;)
     {
         //ec20_run();
-        osDelay(1);
+        osDelay(100);
     }
   /* USER CODE END StartTaskLte */
 }

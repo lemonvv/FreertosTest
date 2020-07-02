@@ -466,7 +466,43 @@ void Usart1_Send_Str(char *str)
     Usart1_DMA_Send_Data((uint8_t *)str, strlen(str));
 }
 
+#if 0
 /*  */
+void Usart1_DMA_Send_Data(uint8_t *buf, uint16_t len)
+{
+    if (len == 0)
+        return;
+
+    osSemaphoreAcquire(usart1_dma_txSemHandle, osWaitForever);
+    uint8_t data;
+    uint16_t i = 0;
+    while(len)
+    {
+        queue_write_char(&g_uart1.tx, &buf[i++]);
+        len--;
+    }
+    i = 0;
+    while(queue_read_char(&g_uart1.tx, &data))
+    {
+        Usart1_DMA_Data.txbuf[i++] = data;
+    }
+    HAL_UART_Transmit_DMA(&huart1, Usart1_DMA_Data.txbuf, i);
+}
+/* 发送队列里面的数据 */
+void Usart1_DMA_Send_Que(void)
+{
+    uint8_t data;
+    uint16_t i = 0;
+    osSemaphoreAcquire(usart1_dma_txSemHandle, osWaitForever);
+    while(queue_read_char(&g_uart1.tx, &data))
+    {
+        Usart1_DMA_Data.txbuf[i++] = data;
+    }
+    if(i == 0)
+        return;
+    HAL_UART_Transmit_DMA(&huart1, Usart1_DMA_Data.txbuf, i);
+}
+#else
 void Usart1_DMA_Send_Data(uint8_t *buf, uint16_t len)
 {
     if (len == 0)
@@ -476,7 +512,7 @@ void Usart1_DMA_Send_Data(uint8_t *buf, uint16_t len)
     memcpy(Usart1_DMA_Data.txbuf, buf, len);
     HAL_UART_Transmit_DMA(&huart1, Usart1_DMA_Data.txbuf, len);
 }
-
+#endif
 void Usart2_DMA_Send_Data(uint8_t *buf, uint16_t len)
 {
     if (len == 0)
@@ -533,20 +569,31 @@ extern osMutexId_t MutexPrintfHandle;
     连续调用发送会造成DMA缓冲区数据被覆盖的问题，
     这个互斥只是Printf互斥，但是这时DMA数据还不一定已经发送完成，所以数据有可能被覆盖 
 */
+
 void BSP_Printf(char *format, ...)
 {
     uint16_t uLen;
     va_list arg;
+    //uint8_t print_buf[100] = {0};
     //uint8_t tx_buf[100];
     /* 这不知道还需不需要互斥， 因为在DMA发送时启用了二值信号量，先不管 */
     osMutexWait(MutexPrintfHandle, osWaitForever);
     va_start(arg, format);
     uLen = vsnprintf((char *)Usart1_DMA_Data.txbuf, sizeof(Usart1_DMA_Data.txbuf), (char *)format, arg);
     //uLen = vsnprintf((char *)tx_buf, sizeof(tx_buf), (char *)format, arg);
+    //uLen = vsnprintf((char *)print_buf, sizeof(print_buf), (char *)format, arg);
     va_end(arg);
+    #if 0
+    for(uint16_t i = 0; i < uLen; i++)
+    {
+        queue_write_char(&g_uart1.tx, &print_buf[i]);
+    }
+    Usart1_DMA_Send_Que();
+    #endif
     Usart1_DMA_Send_Data(Usart1_DMA_Data.txbuf, uLen);
     //Usart1_DMA_Send_Data(tx_buf, uLen);
     osMutexRelease(MutexPrintfHandle);
+    
 }
 
 /* 重写的串口中断接收和中断发送函数，不适用于DMA方式， 传入串口结构体 */
@@ -579,7 +626,7 @@ void uart_rxcallback(UART_T *_uartp)
             _uartp->uart->DR = ch;
         }
     }
-    /* 数据bit位全部发送完毕的中断 */
+    /* 数据bit位全部发完毕的中断 */
     if (((isrflags & USART_SR_TC) != RESET) && ((cr1its & USART_CR1_TCIE) != RESET))
     {
         uint8_t ch;
