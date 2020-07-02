@@ -21,30 +21,7 @@
 #include "spi.h"
 
 /* USER CODE BEGIN 0 */
-#define SPI_FLASH_PageSize 256
-#define SPI_FLASH_PerWritePageSize 256
-#define W25X_WriteEnable 0x06
-#define W25X_WriteDisable 0x04
-#define W25X_ReadStatusReg 0x05
-#define W25X_WriteStatusReg 0x01
-#define W25X_ReadData 0x03
-#define W25X_FastReadData 0x0B
-#define W25X_FastReadDual 0x3B
-#define W25X_PageProgram 0x02
-#define W25X_BlockErase 0xD8
-#define W25X_SectorErase 0x20
-#define W25X_ChipErase 0xC7
-#define W25X_PowerDown 0xB9
-#define W25X_ReleasePowerDown 0xAB
-#define W25X_DeviceID 0xAB
-#define W25X_ManufactDeviceID 0x90
-#define W25X_JedecDeviceID 0x9F
-
-#define WIP_Flag 0x01 /* Write In Progress (WIP) flag */
-
-#define Dummy_Byte 0xFF
-
-SPI_HandleTypeDef hspiflash;
+uint16_t W25QXX_TYPE = W25Q16;
 /* USER CODE END 0 */
 
 SPI_HandleTypeDef hspi1;
@@ -121,450 +98,315 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef *spiHandle)
         HAL_GPIO_DeInit(GPIOB, GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5);
 
         /* USER CODE BEGIN SPI1_MspDeInit 1 */
-        HAL_GPIO_DeInit(SPI1_CS_GPIO_Port, SPI1_CS_Pin);
         /* USER CODE END SPI1_MspDeInit 1 */
     }
 }
 
 /* USER CODE BEGIN 1 */
-/**
-  * 函数功能: 擦除扇区
-  * 输入参数: SectorAddr：待擦除扇区地址，要求为4096倍数
-  * 返 回 值: 无
-  * 说    明：串行Flash最小擦除块大小为4KB(4096字节)，即一个扇区大小，要求输入参数
-  *           为4096倍数。在往串行Flash芯片写入数据之前要求先擦除空间。
-  */
-void SPI_FLASH_SectorErase(uint32_t SectorAddr)
+//SPI1 读写一个字节
+//TxData:要写入的字节
+//返回值:读取到的字节
+uint8_t SPI1_ReadWriteByte(uint8_t TxData)
 {
-    /* 发送FLASH写使能命令 */
-    SPI_FLASH_WriteEnable();
-    SPI_FLASH_WaitForWriteEnd();
-    /* 擦除扇区 */
-    /* 选择串行FLASH: CS低电平 */
-    FLASH_SPI_CS_ENABLE();
-    /* 发送扇区擦除指令*/
-    SPI_FLASH_SendByte(W25X_SectorErase);
-    /*发送擦除扇区地址的高位*/
-    SPI_FLASH_SendByte((SectorAddr & 0xFF0000) >> 16);
-    /* 发送擦除扇区地址的中位 */
-    SPI_FLASH_SendByte((SectorAddr & 0xFF00) >> 8);
-    /* 发送擦除扇区地址的低位 */
-    SPI_FLASH_SendByte(SectorAddr & 0xFF);
-    /* 禁用串行FLASH: CS 高电平 */
-    FLASH_SPI_CS_DISABLE();
-    /* 等待擦除完毕*/
-    SPI_FLASH_WaitForWriteEnd();
+    uint8_t Rxdata;
+    HAL_SPI_TransmitReceive(&hspi1, &TxData, &Rxdata, 1, 1000);
+    return Rxdata; //返回收到的数据
 }
 
-/**
-  * 函数功能: 擦除整片
-  * 输入参数: 无
-  * 返 回 值: 无
-  * 说    明：擦除串行Flash整片空间
-  */
-void SPI_FLASH_BulkErase(void)
+//读取W25QXX的状态寄存器，W25QXX一共有3个状态寄存器
+//状态寄存器1：
+//BIT7  6   5   4   3   2   1   0
+//SPR   RV  TB BP2 BP1 BP0 WEL BUSY
+//SPR:默认0,状态寄存器保护位,配合WP使用
+//TB,BP2,BP1,BP0:FLASH区域写保护设置
+//WEL:写使能锁定
+//BUSY:忙标记位(1,忙;0,空闲)
+//默认:0x00
+//状态寄存器2：
+//BIT7  6   5   4   3   2   1   0
+//SUS   CMP LB3 LB2 LB1 (R) QE  SRP1
+//状态寄存器3：
+//BIT7      6    5    4   3   2   1   0
+//HOLD/RST  DRV1 DRV0 (R) (R) WPS ADP ADS
+//regno:状态寄存器号，范:1~3
+//返回值:状态寄存器值
+uint8_t W25QXX_ReadSR(uint8_t regno)
 {
-    /* 发送FLASH写使能命令 */
-    SPI_FLASH_WriteEnable();
-
-    /* 整片擦除 Erase */
-    /* 选择串行FLASH: CS低电平 */
-    FLASH_SPI_CS_ENABLE();
-    /* 发送整片擦除指令*/
-    SPI_FLASH_SendByte(W25X_ChipErase);
-    /* 禁用串行FLASH: CS高电平 */
-    FLASH_SPI_CS_DISABLE();
-
-    /* 等待擦除完毕*/
-    SPI_FLASH_WaitForWriteEnd();
+    uint8_t byte = 0, command = 0;
+    switch (regno)
+    {
+    case 1:
+        command = W25X_ReadStatusReg1; //读状态寄存器1指令
+        break;
+    case 2:
+        command = W25X_ReadStatusReg2; //读状态寄存器2指令
+        break;
+    case 3:
+        command = W25X_ReadStatusReg3; //读状态寄存器3指令
+        break;
+    default:
+        command = W25X_ReadStatusReg1;
+        break;
+    }
+    FLASH_SPI_CS_ENABLE();                   //使能器件
+    SPI1_ReadWriteByte(command);     //发送读取状态寄存器命令
+    byte = SPI1_ReadWriteByte(0Xff); //读取一个字节
+    FLASH_SPI_CS_DISABLE();                   //取消片选
+    return byte;
+}
+//写W25QXX状态寄存器
+void W25QXX_Write_SR(uint8_t regno, uint8_t sr)
+{
+    uint8_t command = 0;
+    switch (regno)
+    {
+    case 1:
+        command = W25X_WriteStatusReg1; //写状态寄存器1指令
+        break;
+    case 2:
+        command = W25X_WriteStatusReg2; //写状态寄存器2指令
+        break;
+    case 3:
+        command = W25X_WriteStatusReg3; //写状态寄存器3指令
+        break;
+    default:
+        command = W25X_WriteStatusReg1;
+        break;
+    }
+    FLASH_SPI_CS_ENABLE();               //使能器件
+    SPI1_ReadWriteByte(command); //发送写取状态寄存器命令
+    SPI1_ReadWriteByte(sr);      //写入一个字节
+    FLASH_SPI_CS_DISABLE();               //取消片选
+}
+//W25QXX写使能
+//将WEL置位
+void W25QXX_Write_Enable(void)
+{
+    FLASH_SPI_CS_ENABLE();                        //使能器件
+    SPI1_ReadWriteByte(W25X_WriteEnable); //发送写使能
+    FLASH_SPI_CS_DISABLE();                        //取消片选
+}
+//W25QXX写禁止
+//将WEL清零
+void W25QXX_Write_Disable(void)
+{
+    FLASH_SPI_CS_ENABLE();                         //使能器件
+    SPI1_ReadWriteByte(W25X_WriteDisable); //发送写禁止指令
+    FLASH_SPI_CS_DISABLE();                         //取消片选
 }
 
-/**
-  * 函数功能: 往串行FLASH按页写入数据，调用本函数写入数据前需要先擦除扇区
-  * 输入参数: pBuffer：待写入数据的指针
-  *           WriteAddr：写入地址
-  *           NumByteToWrite：写入数据长度，必须小于等于SPI_FLASH_PerWritePageSize
-  * 返 回 值: 无
-  * 说    明：串行Flash每页大小为256个字节
-  */
-void SPI_FLASH_PageWrite(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+//读取芯片ID
+//返回值如下:
+//0XEF13,表示芯片型号为W25Q80
+//0XEF14,表示芯片型号为W25Q16
+//0XEF15,表示芯片型号为W25Q32
+//0XEF16,表示芯片型号为W25Q64
+//0XEF17,表示芯片型号为W25Q128
+//0XEF18,表示芯片型号为W25Q256
+uint16_t W25QXX_ReadID(void)
 {
-    /* 发送FLASH写使能命令 */
-    SPI_FLASH_WriteEnable();
-
-    /* 寻找串行FLASH: CS低电平 */
+    uint16_t Temp = 0;
     FLASH_SPI_CS_ENABLE();
-    /* 写送写指令*/
-    SPI_FLASH_SendByte(W25X_PageProgram);
-    /*发送写地址的高位*/
-    SPI_FLASH_SendByte((WriteAddr & 0xFF0000) >> 16);
-    /*发送写地址的中位*/
-    SPI_FLASH_SendByte((WriteAddr & 0xFF00) >> 8);
-    /*发送写地址的低位*/
-    SPI_FLASH_SendByte(WriteAddr & 0xFF);
-
-    if (NumByteToWrite > SPI_FLASH_PerWritePageSize)
-    {
-        NumByteToWrite = SPI_FLASH_PerWritePageSize;
-        //printf("Err: SPI_FLASH_PageWrite too large!\n");
-    }
-
-    /* 写入数据*/
-    while (NumByteToWrite--)
-    {
-        /* 发送当前要写入的字节数据 */
-        SPI_FLASH_SendByte(*pBuffer);
-        /* 指向下一字节数据 */
-        pBuffer++;
-    }
-
-    /* 禁用串行FLASH: CS 高电平 */
+    SPI1_ReadWriteByte(0x90); //发送读取ID命令
+    SPI1_ReadWriteByte(0x00);
+    SPI1_ReadWriteByte(0x00);
+    SPI1_ReadWriteByte(0x00);
+    Temp |= SPI1_ReadWriteByte(0xFF) << 8;
+    Temp |= SPI1_ReadWriteByte(0xFF);
     FLASH_SPI_CS_DISABLE();
-
-    /* 等待写入完毕*/
-    SPI_FLASH_WaitForWriteEnd();
+    return Temp;
 }
-
-/**
-  * 函数功能: 往串行FLASH写入数据，调用本函数写入数据前需要先擦除扇区
-  * 输入参数: pBuffer：待写入数据的指针
-  *           WriteAddr：写入地址
-  *           NumByteToWrite：写入数据长度
-  * 返 回 值: 无
-  * 说    明：该函数可以设置任意写入数据长度
-  */
-void SPI_FLASH_BufferWrite(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+//读取SPI FLASH
+//在指定地址开始读取指定长度的数据
+//pBuffer:数据存储区
+//ReadAddr:开始读取的地址(24bit)
+//NumByteToRead:要读取的字节数(最大65535)
+void W25QXX_Read(uint8_t *pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
 {
-    uint8_t NumOfPage = 0, NumOfSingle = 0, Addr = 0, count = 0, temp = 0;
-
-    Addr = WriteAddr % SPI_FLASH_PageSize;
-    count = SPI_FLASH_PageSize - Addr;
-    NumOfPage = NumByteToWrite / SPI_FLASH_PageSize;
-    NumOfSingle = NumByteToWrite % SPI_FLASH_PageSize;
-
-    if (Addr == 0) /* 若地址与 SPI_FLASH_PageSize 对齐  */
+    uint16_t i;
+    FLASH_SPI_CS_ENABLE();                     //使能器件
+    SPI1_ReadWriteByte(W25X_ReadData); //发送读取命令
+    if (W25QXX_TYPE == W25Q256)        //如果是W25Q256的话地址为4字节的，要发送最高8位
     {
-        if (NumOfPage == 0) /* NumByteToWrite < SPI_FLASH_PageSize */
-        {
-            SPI_FLASH_PageWrite(pBuffer, WriteAddr, NumByteToWrite);
-        }
-        else /* NumByteToWrite > SPI_FLASH_PageSize */
-        {
-            while (NumOfPage--)
-            {
-                SPI_FLASH_PageWrite(pBuffer, WriteAddr, SPI_FLASH_PageSize);
-                WriteAddr += SPI_FLASH_PageSize;
-                pBuffer += SPI_FLASH_PageSize;
-            }
-
-            SPI_FLASH_PageWrite(pBuffer, WriteAddr, NumOfSingle);
-        }
+        SPI1_ReadWriteByte((uint8_t)((ReadAddr) >> 24));
     }
-    else /* 若地址与 SPI_FLASH_PageSize 不对齐 */
+    SPI1_ReadWriteByte((uint8_t)((ReadAddr) >> 16)); //发送24bit地址
+    SPI1_ReadWriteByte((uint8_t)((ReadAddr) >> 8));
+    SPI1_ReadWriteByte((uint8_t)ReadAddr);
+    for (i = 0; i < NumByteToRead; i++)
     {
-        if (NumOfPage == 0) /* NumByteToWrite < SPI_FLASH_PageSize */
+        pBuffer[i] = SPI1_ReadWriteByte(0XFF); //循环读数
+    }
+    FLASH_SPI_CS_DISABLE();
+}
+//SPI在一页(0~65535)内写入少于256个字节的数据
+//在指定地址开始写入最大256字节的数据
+//pBuffer:数据存储区
+//WriteAddr:开始写入的地址(24bit)
+//NumByteToWrite:要写入的字节数(最大256),该数不应该超过该页的剩余字节数!!!
+void W25QXX_Write_Page(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+{
+    uint16_t i;
+    W25QXX_Write_Enable();                //SET WEL
+    FLASH_SPI_CS_ENABLE();                        //使能器件
+    SPI1_ReadWriteByte(W25X_PageProgram); //发送写页命令
+    if (W25QXX_TYPE == W25Q256)           //如果是W25Q256的话地址为4字节的，要发送最高8位
+    {
+        SPI1_ReadWriteByte((uint8_t)((WriteAddr) >> 24));
+    }
+    SPI1_ReadWriteByte((uint8_t)((WriteAddr) >> 16)); //发送24bit地址
+    SPI1_ReadWriteByte((uint8_t)((WriteAddr) >> 8));
+    SPI1_ReadWriteByte((uint8_t)WriteAddr);
+    for (i = 0; i < NumByteToWrite; i++)
+        SPI1_ReadWriteByte(pBuffer[i]); //循环写数
+    FLASH_SPI_CS_DISABLE();                      //取消片选
+    W25QXX_Wait_Busy();                 //等待写入结束
+}
+//无检验写SPI FLASH
+//必须确保所写的地址范围内的数据全部为0XFF,否则在非0XFF处写入的数据将失败!
+//具有自动换页功能
+//在指定地址开始写入指定长度的数据,但是要确保地址不越界!
+//pBuffer:数据存储区
+//WriteAddr:开始写入的地址(24bit)
+//NumByteToWrite:要写入的字节数(最大65535)
+//CHECK OK
+void W25QXX_Write_NoCheck(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+{
+    uint16_t pageremain;
+    pageremain = 256 - WriteAddr % 256; //单页剩余的字节数
+    if (NumByteToWrite <= pageremain)
+        pageremain = NumByteToWrite; //不大于256个字节
+    while (1)
+    {
+        W25QXX_Write_Page(pBuffer, WriteAddr, pageremain);
+        if (NumByteToWrite == pageremain)
+            break; //写入结束了
+        else       //NumByteToWrite>pageremain
         {
-            if (NumOfSingle > count) /* (NumByteToWrite + WriteAddr) > SPI_FLASH_PageSize */
-            {
-                temp = NumOfSingle - count;
+            pBuffer += pageremain;
+            WriteAddr += pageremain;
 
-                SPI_FLASH_PageWrite(pBuffer, WriteAddr, count);
-                WriteAddr += count;
-                pBuffer += count;
-
-                SPI_FLASH_PageWrite(pBuffer, WriteAddr, temp);
-            }
+            NumByteToWrite -= pageremain; //减去已经写入了的字节数
+            if (NumByteToWrite > 256)
+                pageremain = 256; //一次可以写入256个字节
             else
-            {
-                SPI_FLASH_PageWrite(pBuffer, WriteAddr, NumByteToWrite);
-            }
+                pageremain = NumByteToWrite; //不够256个字节了
         }
-        else /* NumByteToWrite > SPI_FLASH_PageSize */
+    };
+}
+//写SPI FLASH
+//在指定地址开始写入指定长度的数据
+//该函数带擦除操作!
+//pBuffer:数据存储区
+//WriteAddr:开始写入的地址(24bit)
+//NumByteToWrite:要写入的字节数(最大65535)
+uint8_t W25QXX_BUFFER[4096];
+void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+{
+    uint32_t secpos;
+    uint16_t secoff;
+    uint16_t secremain;
+    uint16_t i;
+    uint8_t *W25QXX_BUF;
+    W25QXX_BUF = W25QXX_BUFFER;
+    secpos = WriteAddr / 4096; //扇区地址
+    secoff = WriteAddr % 4096; //在扇区内的偏移
+    secremain = 4096 - secoff; //扇区剩余空间大小
+    //printf("ad:%X,nb:%X\r\n",WriteAddr,NumByteToWrite);//测试用
+    if (NumByteToWrite <= secremain)
+        secremain = NumByteToWrite; //不大于4096个字节
+    while (1)
+    {
+        W25QXX_Read(W25QXX_BUF, secpos * 4096, 4096); //读出整个扇区的内容
+        for (i = 0; i < secremain; i++)               //校验数据
         {
-            NumByteToWrite -= count;
-            NumOfPage = NumByteToWrite / SPI_FLASH_PageSize;
-            NumOfSingle = NumByteToWrite % SPI_FLASH_PageSize;
-
-            SPI_FLASH_PageWrite(pBuffer, WriteAddr, count);
-            WriteAddr += count;
-            pBuffer += count;
-
-            while (NumOfPage--)
-            {
-                SPI_FLASH_PageWrite(pBuffer, WriteAddr, SPI_FLASH_PageSize);
-                WriteAddr += SPI_FLASH_PageSize;
-                pBuffer += SPI_FLASH_PageSize;
-            }
-
-            if (NumOfSingle != 0)
-            {
-                SPI_FLASH_PageWrite(pBuffer, WriteAddr, NumOfSingle);
-            }
+            if (W25QXX_BUF[secoff + i] != 0XFF)
+                break; //需要擦除
         }
-    }
+        if (i < secremain) //需要擦除
+        {
+            W25QXX_Erase_Sector(secpos);    //擦除这个扇区
+            for (i = 0; i < secremain; i++) //复制
+            {
+                W25QXX_BUF[i + secoff] = pBuffer[i];
+            }
+            W25QXX_Write_NoCheck(W25QXX_BUF, secpos * 4096, 4096); //写入整个扇区
+        }
+        else
+            W25QXX_Write_NoCheck(pBuffer, WriteAddr, secremain); //写已经擦除了的,直接写入扇区剩余区间.
+        if (NumByteToWrite == secremain)
+            break; //写入结束了
+        else       //写入未结束
+        {
+            secpos++;   //扇区地址增1
+            secoff = 0; //偏移位置为0
+
+            pBuffer += secremain;        //指针偏移
+            WriteAddr += secremain;      //写地址偏移
+            NumByteToWrite -= secremain; //字节数递减
+            if (NumByteToWrite > 4096)
+                secremain = 4096; //下一个扇区还是写不完
+            else
+                secremain = NumByteToWrite; //下一个扇区可以写完了
+        }
+    };
 }
-
-/**
-  * 函数功能: 从串行Flash读取数据
-  * 输入参数: pBuffer：存放读取到数据的指针
-  *           ReadAddr：读取数据目标地址
-  *           NumByteToRead：读取数据长度
-  * 返 回 值: 无
-  * 说    明：该函数可以设置任意读取数据长度
-  */
-void SPI_FLASH_BufferRead(uint8_t *pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
+//擦除整个芯片
+//等待时间超长...
+void W25QXX_Erase_Chip(void)
 {
-    /* 选择串行FLASH: CS低电平 */
-    FLASH_SPI_CS_ENABLE();
-
-    /* 发送 读 指令 */
-    SPI_FLASH_SendByte(W25X_ReadData);
-
-    /* 发送 读 地址高位 */
-    SPI_FLASH_SendByte((ReadAddr & 0xFF0000) >> 16);
-    /* 发送 读 地址中位 */
-    SPI_FLASH_SendByte((ReadAddr & 0xFF00) >> 8);
-    /* 发送 读 地址低位 */
-    SPI_FLASH_SendByte(ReadAddr & 0xFF);
-
-    while (NumByteToRead--) /* 读取数据 */
+    W25QXX_Write_Enable(); //SET WEL
+    W25QXX_Wait_Busy();
+    FLASH_SPI_CS_ENABLE();                      //使能器件
+    SPI1_ReadWriteByte(W25X_ChipErase); //发送片擦除命令
+    FLASH_SPI_CS_DISABLE();                      //取消片选
+    W25QXX_Wait_Busy();                 //等待芯片擦除结束
+}
+//擦除一个扇区
+//Dst_Addr:扇区地址 根据实际容量设置
+//擦除一个扇区的最少时间:150ms
+void W25QXX_Erase_Sector(uint32_t Dst_Addr)
+{
+    //监视falsh擦除情况,测试用
+    //printf("fe:%x\r\n",Dst_Addr);
+    Dst_Addr *= 4096;
+    W25QXX_Write_Enable(); //SET WEL
+    W25QXX_Wait_Busy();
+    FLASH_SPI_CS_ENABLE();                        //使能器件
+    SPI1_ReadWriteByte(W25X_SectorErase); //发送扇区擦除指令
+    if (W25QXX_TYPE == W25Q256)           //如果是W25Q256的话地址为4字节的，要发送最高8位
     {
-        /* 读取一个字节*/
-        *pBuffer = SPI_FLASH_SendByte(Dummy_Byte);
-        /* 指向下一个字节缓冲区 */
-        pBuffer++;
+        SPI1_ReadWriteByte((uint8_t)((Dst_Addr) >> 24));
     }
-
-    /* 禁用串行FLASH: CS 高电平 */
-    FLASH_SPI_CS_DISABLE();
+    SPI1_ReadWriteByte((uint8_t)((Dst_Addr) >> 16)); //发送24bit地址
+    SPI1_ReadWriteByte((uint8_t)((Dst_Addr) >> 8));
+    SPI1_ReadWriteByte((uint8_t)Dst_Addr);
+    FLASH_SPI_CS_DISABLE();      //取消片选
+    W25QXX_Wait_Busy(); //等待擦除完成
 }
-
-/**
-  * 函数功能: 读取串行Flash型号的ID
-  * 输入参数: 无
-  * 返 回 值: uint32_t：串行Flash的型号ID
-  * 说    明：  FLASH_ID      IC型号      存储空间大小         
-                0xEF3015      W25X16        2M byte
-                0xEF4015	    W25Q16        4M byte
-                0XEF4017      W25Q64        8M byte
-                0XEF4018      W25Q128       16M byte
-  */
-uint32_t SPI_FLASH_ReadID(void)
+//等待空闲
+void W25QXX_Wait_Busy(void)
 {
-    uint32_t Temp = 0, Temp0 = 0, Temp1 = 0, Temp2 = 0;
-
-    /* 选择串行FLASH: CS低电平 */
-    FLASH_SPI_CS_ENABLE();
-
-    /* 发送命令：读取芯片型号ID */
-    SPI_FLASH_SendByte(W25X_JedecDeviceID);
-
-    /* 从串行Flash读取一个字节数据 */
-    Temp0 = SPI_FLASH_SendByte(Dummy_Byte);
-
-    /* 从串行Flash读取一个字节数据 */
-    Temp1 = SPI_FLASH_SendByte(Dummy_Byte);
-
-    /* 从串行Flash读取一个字节数据 */
-    Temp2 = SPI_FLASH_SendByte(Dummy_Byte);
-
-    /* 禁用串行Flash：CS高电平 */
-    FLASH_SPI_CS_DISABLE();
-
-    Temp = (Temp0 << 16) | (Temp1 << 8) | Temp2;
-    return Temp;
+    while ((W25QXX_ReadSR(1) & 0x01) == 0x01)
+        ; // 等待BUSY位清空
 }
-
-/**
-  * 函数功能: 读取串行Flash设备ID
-  * 输入参数: 无
-  * 返 回 值: uint32_t：串行Flash的设备ID
-  * 说    明：
-  */
-uint32_t SPI_FLASH_ReadDeviceID(void)
+//进入掉电模式
+void W25QXX_PowerDown(void)
 {
-    uint32_t Temp = 0;
-
-    /* 选择串行FLASH: CS低电平 */
-    FLASH_SPI_CS_ENABLE();
-
-    /* 发送命令：读取芯片设备ID * */
-    SPI_FLASH_SendByte(W25X_DeviceID);
-    SPI_FLASH_SendByte(Dummy_Byte);
-    SPI_FLASH_SendByte(Dummy_Byte);
-    SPI_FLASH_SendByte(Dummy_Byte);
-
-    /* 从串行Flash读取一个字节数据 */
-    Temp = SPI_FLASH_SendByte(Dummy_Byte);
-
-    /* 禁用串行Flash：CS高电平 */
-    FLASH_SPI_CS_DISABLE();
-
-    return Temp;
+    FLASH_SPI_CS_ENABLE();                      //使能器件
+    SPI1_ReadWriteByte(W25X_PowerDown); //发送掉电命令
+    FLASH_SPI_CS_DISABLE();                      //取消片选
+    //delay_us(3);                        //等待TPD
 }
-
-/**
-  * 函数功能: 启动连续读取数据串
-  * 输入参数: ReadAddr：读取地址
-  * 返 回 值: 无
-  * 说    明：Initiates a read data byte (READ) sequence from the Flash.
-  *           This is done by driving the /CS line low to select the device,
-  *           then the READ instruction is transmitted followed by 3 bytes
-  *           address. This function exit and keep the /CS line low, so the
-  *           Flash still being selected. With this technique the whole
-  *           content of the Flash is read with a single READ instruction.
-  */
-void SPI_FLASH_StartReadSequence(uint32_t ReadAddr)
+//唤醒
+void W25QXX_WAKEUP(void)
 {
-    /* Select the FLASH: Chip Select low */
-    FLASH_SPI_CS_ENABLE();
-
-    /* Send "Read from Memory " instruction */
-    SPI_FLASH_SendByte(W25X_ReadData);
-
-    /* Send the 24-bit address of the address to read from -----------------------*/
-    /* Send ReadAddr high nibble address byte */
-    SPI_FLASH_SendByte((ReadAddr & 0xFF0000) >> 16);
-    /* Send ReadAddr medium nibble address byte */
-    SPI_FLASH_SendByte((ReadAddr & 0xFF00) >> 8);
-    /* Send ReadAddr low nibble address byte */
-    SPI_FLASH_SendByte(ReadAddr & 0xFF);
+    FLASH_SPI_CS_ENABLE();                             //使能器件
+    SPI1_ReadWriteByte(W25X_ReleasePowerDown); //  send W25X_PowerDown command 0xAB
+    FLASH_SPI_CS_DISABLE();                             //取消片选
+    //delay_us(3);                               //等待TRES1
 }
 
-/**
-  * 函数功能: 从串行Flash读取一个字节数据
-  * 输入参数: 无
-  * 返 回 值: uint8_t：读取到的数据
-  * 说    明：This function must be used only if the Start_Read_Sequence
-  *           function has been previously called.
-  */
-uint8_t SPI_FLASH_ReadByte(void)
-{
-    uint8_t d_read, d_send = Dummy_Byte;
-    if (HAL_SPI_TransmitReceive(&hspiflash, &d_send, &d_read, 1, 0xFFFFFF) != HAL_OK)
-        d_read = Dummy_Byte;
-
-    return d_read;
-}
-
-/**
-  * 函数功能: 往串行Flash读取写入一个字节数据并接收一个字节数据
-  * 输入参数: byte：待发送数据
-  * 返 回 值: uint8_t：接收到的数据
-  * 说    明：无
-  */
-uint8_t SPI_FLASH_SendByte(uint8_t byte)
-{
-    uint8_t d_read, d_send = byte;
-    if (HAL_SPI_TransmitReceive(&hspiflash, &d_send, &d_read, 1, 0xFFFFFF) != HAL_OK)
-        d_read = Dummy_Byte;
-
-    return d_read;
-}
-
-/**
-  * 函数功能: 往串行Flash读取写入半字(16bit)数据并接收半字数据
-  * 输入参数: byte：待发送数据
-  * 返 回 值: uint16_t：接收到的数据
-  * 说    明：无
-  */
-uint16_t SPI_FLASH_SendHalfWord(uint16_t HalfWord)
-{
-    uint8_t d_read[2], d_send[2];
-    d_send[0] = HalfWord & 0x00FF;
-    d_send[1] = (HalfWord >> 8) & 0x00FF;
-    if (HAL_SPI_TransmitReceive(&hspiflash, d_send, d_read, 2, 0xFFFFFF) != HAL_OK)
-    {
-        d_read[0] = Dummy_Byte;
-        d_read[1] = Dummy_Byte;
-    }
-
-    return ((d_read[1] << 8) + d_read[0]);
-}
-
-/**
-  * 函数功能: 使能串行Flash写操作
-  * 输入参数: 无
-  * 返 回 值: 无
-  * 说    明：无
-  */
-void SPI_FLASH_WriteEnable(void)
-{
-    /* 选择串行FLASH: CS低电平 */
-    FLASH_SPI_CS_ENABLE();
-
-    /* 发送命令：写使能 */
-    SPI_FLASH_SendByte(W25X_WriteEnable);
-
-    /* 禁用串行Flash：CS高电平 */
-    FLASH_SPI_CS_DISABLE();
-}
-
-/**
-  * 函数功能: 等待数据写入完成
-  * 输入参数: 无
-  * 返 回 值: 无
-  * 说    明：Polls the status of the Write In Progress (WIP) flag in the
-  *           FLASH's status  register  and  loop  until write  opertaion
-  *           has completed.
-  */
-void SPI_FLASH_WaitForWriteEnd(void)
-{
-    uint8_t FLASH_Status = 0;
-
-    /* Select the FLASH: Chip Select low */
-    FLASH_SPI_CS_ENABLE();
-
-    /* Send "Read Status Register" instruction */
-    SPI_FLASH_SendByte(W25X_ReadStatusReg);
-
-    /* Loop as long as the memory is busy with a write cycle */
-    do
-    {
-        /* Send a dummy byte to generate the clock needed by the FLASH
-    and put the value of the status register in FLASH_Status variable */
-        FLASH_Status = SPI_FLASH_SendByte(Dummy_Byte);
-    } while ((FLASH_Status & WIP_Flag) == SET); /* Write in progress */
-
-    /* Deselect the FLASH: Chip Select high */
-    FLASH_SPI_CS_DISABLE();
-}
-
-/**
-  * 函数功能: 进入掉电模式
-  * 输入参数: 无
-  * 返 回 值: 无
-  * 说    明：无
-  */
-void SPI_Flash_PowerDown(void)
-{
-    /* Select the FLASH: Chip Select low */
-    FLASH_SPI_CS_ENABLE();
-
-    /* Send "Power Down" instruction */
-    SPI_FLASH_SendByte(W25X_PowerDown);
-
-    /* Deselect the FLASH: Chip Select high */
-    FLASH_SPI_CS_DISABLE();
-}
-
-/**
-  * 函数功能: 唤醒串行Flash
-  * 输入参数: 无
-  * 返 回 值: 无
-  * 说    明：无
-  */
-void SPI_Flash_WAKEUP(void)
-{
-    /* Select the FLASH: Chip Select low */
-    FLASH_SPI_CS_ENABLE();
-
-    /* Send "Power Down" instruction */
-    SPI_FLASH_SendByte(W25X_ReleasePowerDown);
-
-    /* Deselect the FLASH: Chip Select high */
-    FLASH_SPI_CS_DISABLE();
-}
 /* USER CODE END 1 */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

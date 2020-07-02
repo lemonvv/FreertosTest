@@ -30,6 +30,7 @@
 #include "queue.h"
 #include "semphr.h"
 #include "lte.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -276,10 +277,12 @@ void StartTaskLed(void *argument)
 void StartTaskLte(void *argument)
 {
   /* USER CODE BEGIN StartTaskLte */
+    osDelay(5000);
+    Test_Txt();
     /* Infinite loop */
     for (;;)
     {
-        ec20_run();
+        //ec20_run();
         osDelay(1);
     }
   /* USER CODE END StartTaskLte */
