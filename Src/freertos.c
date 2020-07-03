@@ -31,7 +31,9 @@
 #include "semphr.h"
 #include "lte.h"
 #include "txt.h"
-
+#include "fatfs.h"
+#include <stdio.h>
+#include "spi.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -279,13 +281,9 @@ void StartTaskLed(void *argument)
 void StartTaskLte(void *argument)
 {
   /* USER CODE BEGIN StartTaskLte */
-    //osDelay(5000);
-    Test_Txt();
+    tset_fatfs();
     /* Infinite loop */
-    osDelay(100);
-    BSP_Printf("TTTT\r\n");
-    osDelay(100);
-    BSP_Printf("EEEE\r\n");
+
     for (;;)
     {
         //ec20_run();

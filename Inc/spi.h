@@ -20,18 +20,17 @@
 #ifndef __spi_H
 #define __spi_H
 #ifdef __cplusplus
-extern "C"
-{
+ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-    /* USER CODE BEGIN Includes */
+/* USER CODE BEGIN Includes */
 
-    /* USER CODE END Includes */
+/* USER CODE END Includes */
 
-    extern SPI_HandleTypeDef hspi1;
+extern SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN Private defines */
 #define W25Q80 0XEF13
@@ -71,11 +70,11 @@ extern "C"
 #define W25X_Enable4ByteAddr 0xB7
 #define W25X_Exit4ByteAddr 0xE9
 
-    /* USER CODE END Private defines */
+/* USER CODE END Private defines */
 
-    void MX_SPI1_Init(void);
+void MX_SPI1_Init(void);
 
-    /* USER CODE BEGIN Prototypes */
+/* USER CODE BEGIN Prototypes */
     void W25QXX_Init(void);
     uint16_t W25QXX_ReadID(void);                    //读取FLASH ID
     uint8_t W25QXX_ReadSR(uint8_t regno);            //读取状态寄存器
@@ -91,7 +90,7 @@ extern "C"
     void W25QXX_Wait_Busy(void);                                                      //等待空闲
     void W25QXX_PowerDown(void);                                                      //进入掉电模式
     void W25QXX_WAKEUP(void);                                                         //唤醒
-    /* USER CODE END Prototypes */
+/* USER CODE END Prototypes */
 
 #ifdef __cplusplus
 }

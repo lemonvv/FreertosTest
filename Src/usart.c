@@ -694,9 +694,15 @@ void usart_write_buf(UART_T *_ruart, uint8_t *buf, uint16_t len)
         count++;
     }
 }
-/* 
 
- */
+int fputc(int ch, FILE *f)
+{
+	usart_send_data(&g_uart3, (uint8_t *)&ch, 1);
+	
+	return ch;
+
+}
+
 void usart_val_int(void)
 {
     g_uart1.uart = USART1;

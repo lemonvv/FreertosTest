@@ -3,5 +3,4 @@
 
 #include "main.h"
 
-void Test_Txt(void);
 #endif

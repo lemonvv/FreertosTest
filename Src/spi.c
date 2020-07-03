@@ -21,6 +21,7 @@
 #include "spi.h"
 
 /* USER CODE BEGIN 0 */
+#include <stdio.h>
 uint16_t W25QXX_TYPE = W25Q16;
 /* USER CODE END 0 */
 
@@ -30,77 +31,78 @@ SPI_HandleTypeDef hspi1;
 void MX_SPI1_Init(void)
 {
 
-    hspi1.Instance = SPI1;
-    hspi1.Init.Mode = SPI_MODE_MASTER;
-    hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-    hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-    hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
-    hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
-    hspi1.Init.NSS = SPI_NSS_SOFT;
-    hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
-    hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-    hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-    hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-    hspi1.Init.CRCPolynomial = 10;
-    if (HAL_SPI_Init(&hspi1) != HAL_OK)
-    {
-        Error_Handler();
-    }
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
+  hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
 }
 
-void HAL_SPI_MspInit(SPI_HandleTypeDef *spiHandle)
+void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
 {
 
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    if (spiHandle->Instance == SPI1)
-    {
-        /* USER CODE BEGIN SPI1_MspInit 0 */
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  if(spiHandle->Instance==SPI1)
+  {
+  /* USER CODE BEGIN SPI1_MspInit 0 */
 
-        /* USER CODE END SPI1_MspInit 0 */
-        /* SPI1 clock enable */
-        __HAL_RCC_SPI1_CLK_ENABLE();
-
-        __HAL_RCC_GPIOB_CLK_ENABLE();
-        /**SPI1 GPIO Configuration    
+  /* USER CODE END SPI1_MspInit 0 */
+    /* SPI1 clock enable */
+    __HAL_RCC_SPI1_CLK_ENABLE();
+  
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    /**SPI1 GPIO Configuration    
     PB3     ------> SPI1_SCK
     PB4     ------> SPI1_MISO
     PB5     ------> SPI1_MOSI 
     */
-        GPIO_InitStruct.Pin = GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5;
-        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-        GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
-        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-        /* USER CODE BEGIN SPI1_MspInit 1 */
+  /* USER CODE BEGIN SPI1_MspInit 1 */
 
-        /* USER CODE END SPI1_MspInit 1 */
-    }
+  /* USER CODE END SPI1_MspInit 1 */
+  }
 }
 
-void HAL_SPI_MspDeInit(SPI_HandleTypeDef *spiHandle)
+void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
 {
 
-    if (spiHandle->Instance == SPI1)
-    {
-        /* USER CODE BEGIN SPI1_MspDeInit 0 */
+  if(spiHandle->Instance==SPI1)
+  {
+  /* USER CODE BEGIN SPI1_MspDeInit 0 */
 
-        /* USER CODE END SPI1_MspDeInit 0 */
-        /* Peripheral clock disable */
-        __HAL_RCC_SPI1_CLK_DISABLE();
-
-        /**SPI1 GPIO Configuration    
+  /* USER CODE END SPI1_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_SPI1_CLK_DISABLE();
+  
+    /**SPI1 GPIO Configuration    
     PB3     ------> SPI1_SCK
     PB4     ------> SPI1_MISO
     PB5     ------> SPI1_MOSI 
     */
-        HAL_GPIO_DeInit(GPIOB, GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5);
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5);
 
-        /* USER CODE BEGIN SPI1_MspDeInit 1 */
-        /* USER CODE END SPI1_MspDeInit 1 */
-    }
-}
+  /* USER CODE BEGIN SPI1_MspDeInit 1 */
+  /* USER CODE END SPI1_MspDeInit 1 */
+  }
+} 
 
 /* USER CODE BEGIN 1 */
 //SPI1 读写一个字节
@@ -317,8 +319,10 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
     //printf("ad:%X,nb:%X\r\n",WriteAddr,NumByteToWrite);//测试用
     if (NumByteToWrite <= secremain)
         secremain = NumByteToWrite; //不大于4096个字节
+    
     while (1)
     {
+        W25QXX_Erase_Sector(secpos);    //擦除这个扇区
         #if 0
         W25QXX_Read(W25QXX_BUF, secpos * 4096, 4096); //读出整个扇区的内容
         for (i = 0; i < secremain; i++)               //校验数据
@@ -337,6 +341,7 @@ void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
         }
         else
         #endif
+            
             W25QXX_Write_NoCheck(pBuffer, WriteAddr, secremain); //写已经擦除了的,直接写入扇区剩余区间.
         if (NumByteToWrite == secremain)
             break; //写入结束了
