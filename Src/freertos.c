@@ -281,9 +281,10 @@ void StartTaskLed(void *argument)
 void StartTaskLte(void *argument)
 {
   /* USER CODE BEGIN StartTaskLte */
-    tset_fatfs();
+    //tset_fatfs();
     /* Infinite loop */
-
+    Usart1_Send_Str("hello \r\n");
+    printf("end\r\n");
     for (;;)
     {
         //ec20_run();
