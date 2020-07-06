@@ -284,7 +284,11 @@ void StartTaskLte(void *argument)
     //tset_fatfs();
     /* Infinite loop */
     Usart1_Send_Str("hello \r\n");
+
+    Usart1_Send_Str("1111 \r\n");
     printf("end\r\n");
+
+    Usart1_Send_Str("2222 \r\n");
     for (;;)
     {
         //ec20_run();

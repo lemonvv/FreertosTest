@@ -80,6 +80,7 @@ extern UART_T g_uart3;
 void Usart_IRQen_Init(void);
 void Usart_IDLE_Callback(UART_HandleTypeDef *huart);
 void Usart1_DMA_Send_Data(uint8_t *buf, uint16_t len);
+void Usart1_DMA_Send_Data_Irq(uint8_t *buf, uint16_t len);
 void Usart2_DMA_Send_Data(uint8_t *buf, uint16_t len);
 void Usart_Dma_TxDone_Callback(UART_HandleTypeDef *huart);
 void Test_Send_DMA(void);
@@ -95,6 +96,7 @@ void usart_send_data_queue(UART_T *_wuart, UART_T *_ruart);
 void usart_send_data(UART_T *_wuart, uint8_t *buf, uint16_t len);
 void usart_write_buf(UART_T *_ruart, uint8_t *buf, uint16_t len);
 void Usart1_DMA_Send_Que(void);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

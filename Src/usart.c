@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "fifo.h"
+#include "tim.h"
 /* typedef struct
 {
     uint8_t *rxbuf;
@@ -137,7 +138,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
   if(uartHandle->Instance==USART1)
   {
   /* USER CODE BEGIN USART1_MspInit 0 */
-
+    DMA2->HIFCR |= (1 << 27);
+      __HAL_DMA_CLEAR_FLAG(huart1.hdmatx, DMA_FLAG_TCIF3_7);
   /* USER CODE END USART1_MspInit 0 */
     /* USART1 clock enable */
     __HAL_RCC_USART1_CLK_ENABLE();
@@ -376,15 +378,21 @@ extern osSemaphoreId_t usart1_dma_txSemHandle;
 void Usart_IRQen_Init(void)
 {
     //需要放在串口初始化完成后
+    //__HAL_DMA_CLEAR_FLAG(huart1.hdmatx, DMA_FLAG_TCIF3_7);
+    //DMA2->HIFCR |= (1 << 27);
     __HAL_DMA_DISABLE(huart1.hdmarx);
-
+    __HAL_DMA_DISABLE_IT(huart1.hdmatx, DMA_IT_HT);
+    
+    //DMA2->HIFCR |= (1 << 27);
     __HAL_DMA_SET_COUNTER(huart1.hdmarx, UART_BUFFSIZE);
     __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
     HAL_UART_Receive_DMA(&huart1, Usart1_DMA_Data.rxbuf, UART_BUFFSIZE);
     CLEAR_BIT(USART1->SR, USART_SR_TC);   /* 清除 TC 发送完成标志 */
     CLEAR_BIT(USART1->SR, USART_SR_RXNE); /* 清除 RXNE 接收标志 */
     CLEAR_BIT(USART1->SR, USART_SR_IDLE);
-
+    
+    //__HAL_DMA_CLEAR_FLAG(huart1.hdmatx, DMA_FLAG_TCIF3_7);
+    
     __HAL_DMA_DISABLE(huart2.hdmarx);
 
     __HAL_DMA_SET_COUNTER(huart2.hdmarx, UART_BUFFSIZE);
@@ -393,6 +401,7 @@ void Usart_IRQen_Init(void)
     CLEAR_BIT(USART2->SR, USART_SR_TC);   /* 清除 TC 发送完成标志 */
     CLEAR_BIT(USART2->SR, USART_SR_RXNE); /* 清除 RXNE 接收标志 */
     CLEAR_BIT(USART2->SR, USART_SR_IDLE);
+    //__HAL_DMA_CLEAR_FLAG(huart2.hdmatx, DMA_FLAG_TCIF2_6);
 
     __HAL_UART_ENABLE_IT(&huart3, UART_IT_RXNE);
     CLEAR_BIT(USART3->SR, USART_SR_TC);                 /* 清除 TC 发送完成标志 */
@@ -419,6 +428,7 @@ void Usart_IDLE_Callback(UART_HandleTypeDef *huart)
         //重新开启接收
         HAL_UART_Receive_DMA(&huart1, Usart1_DMA_Data.rxbuf, UART_BUFFSIZE);
         __HAL_DMA_ENABLE(huart->hdmarx);
+        //printf("usart1 rx\r\n");
         osSemaphoreRelease(usart1_dma_rxSemHandle);
     }
     else if ((__HAL_UART_GET_FLAG(&huart2, UART_FLAG_IDLE) != RESET))
@@ -441,11 +451,27 @@ void Usart_Dma_TxDone_Callback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART1)
     {
-        osSemaphoreRelease(usart1_dma_txSemHandle);
+        /* 会产生接收半完成中断，所以要判断 */
+        //__HAL_DMA_CLEAR_FLAG(huart1.hdmatx, DMA_FLAG_TCIF3_7);
+        //DMA2->HIFCR |= (1 << 27);
+        //if(DMA2->HISR & (1 << 27))
+        if(__HAL_DMA_GET_FLAG(huart1.hdmatx, DMA_FLAG_TCIF3_7))
+        {
+            osSemaphoreRelease(usart1_dma_txSemHandle);
+        }
+        //printf("irq %d\r\n", DMA2->HISR);
+        
+        
     }
     else if (huart->Instance == USART2)
     {
-        osSemaphoreRelease(usart2_dma_txSemHandle);
+        /* 会产生接收半完成中断，所以要判断 */
+        //if(DMA1->HISR & (1 << 21))
+        if(__HAL_DMA_GET_FLAG(huart2.hdmatx, DMA_FLAG_TCIF2_6))
+        {
+            osSemaphoreRelease(usart2_dma_txSemHandle);
+        }
+        
     }
 }
 #if 0
@@ -460,10 +486,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
 }
 #endif
+extern osMutexId_t MutexPrintfHandle;
+
 /* 发送字符串 */
 void Usart1_Send_Str(char *str)
 {
-    Usart1_DMA_Send_Data((uint8_t *)str, strlen(str));
+
+    Usart1_DMA_Send_Datas((uint8_t *)str, strlen(str));
+
 }
 
 #if 0
@@ -503,14 +533,34 @@ void Usart1_DMA_Send_Que(void)
     HAL_UART_Transmit_DMA(&huart1, Usart1_DMA_Data.txbuf, i);
 }
 #else
+/* 在中断中调用该函数会出错，因为该函数一直在等待二值信号量 中断调用需要把等待时间改为0s*/
 void Usart1_DMA_Send_Data(uint8_t *buf, uint16_t len)
 {
     if (len == 0)
         return;
+    osStatus_t sta = osSemaphoreAcquire(usart1_dma_txSemHandle, osWaitForever);
+    if(sta == osOK)
+    {
+        memcpy(Usart1_DMA_Data.txbuf, buf, len);
+        //注意 hal库在调用DMA发送函数时，会打开半传输完成中断
+        HAL_UART_Transmit_DMA(&huart1, Usart1_DMA_Data.txbuf, len);
 
-    osSemaphoreAcquire(usart1_dma_txSemHandle, osWaitForever);
-    memcpy(Usart1_DMA_Data.txbuf, buf, len);
-    HAL_UART_Transmit_DMA(&huart1, Usart1_DMA_Data.txbuf, len);
+    }   
+}
+/* 此函数可以在中断中调用，但是当获取不到二值信号时不会把数据发送出去。。。 */
+void Usart1_DMA_Send_Data_Irq(uint8_t *buf, uint16_t len)
+{
+    if (len == 0)
+        return;
+    osStatus_t sta = osSemaphoreAcquire(usart1_dma_txSemHandle, 0);
+    //printf("STA %d\r\n",sta);
+    if(sta == osOK)
+    {
+        memcpy(Usart1_DMA_Data.txbuf, buf, len);
+        //注意 hal库在调用DMA发送函数时，会打开半传输完成中断
+        HAL_UART_Transmit_DMA(&huart1, Usart1_DMA_Data.txbuf, len);
+
+    }
 }
 #endif
 void Usart2_DMA_Send_Data(uint8_t *buf, uint16_t len)
@@ -518,9 +568,12 @@ void Usart2_DMA_Send_Data(uint8_t *buf, uint16_t len)
     if (len == 0)
         return;
 
-    osSemaphoreAcquire(usart2_dma_txSemHandle, osWaitForever);
-    memcpy(Usart2_DMA_Data.txbuf, buf, len);
-    HAL_UART_Transmit_DMA(&huart2, Usart2_DMA_Data.txbuf, len);
+    if(osSemaphoreAcquire(usart2_dma_txSemHandle, osWaitForever) == osOK)
+    {
+        memcpy(Usart2_DMA_Data.txbuf, buf, len);
+        HAL_UART_Transmit_DMA(&huart2, Usart2_DMA_Data.txbuf, len);
+    }
+
 }
 
 void Test_Send_DMA(void)
@@ -563,7 +616,7 @@ USART_DATA_T *get_usart_data_fifo(uint8_t COM)
     }
     return 0;
 }
-extern osMutexId_t MutexPrintfHandle;
+
 
 /* 
     连续调用发送会造成DMA缓冲区数据被覆盖的问题，
@@ -596,6 +649,13 @@ void BSP_Printf(char *format, ...)
     
 }
 
+/* 接收完成，定时器中断回调函数 这里可以直接发送一个信号值通知程序接收完成*/
+void usart_rx_done_callback(void)
+{
+    //Usart1_Send_Str("rx done \r\n");
+    //Usart1_Send_Str("callback \r\n");
+}
+
 /* 重写的串口中断接收和中断发送函数，不适用于DMA方式， 传入串口结构体 */
 void uart_rxcallback(UART_T *_uartp)
 {
@@ -609,6 +669,8 @@ void uart_rxcallback(UART_T *_uartp)
         uint8_t ch;
         ch = READ_REG(_uartp->uart->DR);
         queue_write_char(&_uartp->rx, &ch);
+        bsp_StartHardTimer(1, 4000, usart_rx_done_callback);
+        //Usart1_Send_Str("rx done \r\n");
     }
     /* 处理发送缓冲区空中断 */
     if (((isrflags & USART_SR_TXE) != RESET) && (cr1its & USART_CR1_TXEIE) != RESET)
@@ -647,6 +709,9 @@ void uart_rxcallback(UART_T *_uartp)
         READ_REG(_uartp->uart->DR);
     }
 }
+
+
+
 
 /*
 

@@ -59,6 +59,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern TIM_HandleTypeDef htim2;
 extern DMA_HandleTypeDef hdma_usart1_rx;
 extern DMA_HandleTypeDef hdma_usart1_tx;
 extern DMA_HandleTypeDef hdma_usart2_rx;
@@ -71,6 +72,7 @@ extern TIM_HandleTypeDef htim7;
 /* USER CODE BEGIN EV */
 extern void Usart_IDLE_Callback(UART_HandleTypeDef *huart);
 extern void Usart_Dma_TxDone_Callback(UART_HandleTypeDef *huart);
+extern void Timx_CC_Callback(TIM_HandleTypeDef* tim_baseHandle);
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -198,6 +200,20 @@ void DMA1_Stream6_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles TIM2 global interrupt.
+  */
+void TIM2_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM2_IRQn 0 */
+    Timx_CC_Callback(&htim2);
+  /* USER CODE END TIM2_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim2);
+  /* USER CODE BEGIN TIM2_IRQn 1 */
+
+  /* USER CODE END TIM2_IRQn 1 */
+}
+
+/**
   * @brief This function handles USART1 global interrupt.
   */
 void USART1_IRQHandler(void)
@@ -277,7 +293,7 @@ void DMA2_Stream7_IRQHandler(void)
   /* USER CODE END DMA2_Stream7_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart1_tx);
   /* USER CODE BEGIN DMA2_Stream7_IRQn 1 */
-
+    
   /* USER CODE END DMA2_Stream7_IRQn 1 */
 }
 
