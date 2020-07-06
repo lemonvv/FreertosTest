@@ -46,7 +46,7 @@ void tset_fatfs(void)
 {
     UINT bw;
     UINT br;
-    uint8_t buf[100];
+    uint8_t buf[100] = {0};
     retUSER = f_mount(&USERFatFS, USERPath, 1);
     printf("res %d\r\n", retUSER);
     if(retUSER == FR_NO_FILESYSTEM)
@@ -61,6 +61,7 @@ void tset_fatfs(void)
         }
         printf("Filesystem OK\r\n");
     }
+    #if 0
     printf("Mount OK\r\n");
     if(retUSER == FR_OK)
     {
@@ -75,11 +76,12 @@ void tset_fatfs(void)
             printf("res %d\r\n", retUSER);
         }
     }
+    #endif
     if(retUSER == FR_OK)
     {
-        retUSER = f_open(&USERFile, "0:/test.txt", FA_READ);
+        retUSER = f_open(&USERFile, "0:/test1.txt", FA_READ);
         printf("res %d\r\n", retUSER);
-        retUSER = f_read(&USERFile, buf, 6, &br);
+        retUSER = f_read(&USERFile, buf, 7, &br);
         printf("res %d\r\n read:%s\r\n", retUSER, buf);
         retUSER = f_close(&USERFile);
         printf("res %d\r\n", retUSER);

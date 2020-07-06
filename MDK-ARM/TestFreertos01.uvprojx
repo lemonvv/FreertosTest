@@ -10,7 +10,7 @@
       <TargetName>TestFreertos01</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060750::V5.06 update 6 (build 750)::ARMCC</pCCUsed>
+      <pCCUsed>5060750::V5.06 update 6 (build 750)::.\ARMCC</pCCUsed>
       <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
@@ -185,6 +185,7 @@
             <uocXRam>0</uocXRam>
             <RvdsVP>2</RvdsVP>
             <RvdsMve>0</RvdsMve>
+            <RvdsCdeCp>0</RvdsCdeCp>
             <hadIRAM2>1</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
@@ -338,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F407xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;                                   ../Drivers/STM32F4xx_HAL_Driver/Inc;                                   ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;                                   ../Middlewares/Third_Party/FreeRTOS/Source/include;                                   ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;                                   ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;                                   ../Drivers/CMSIS/Device/ST/STM32F4xx/Include;                                   ../Drivers/CMSIS/Include;    ../Middlewares/Third_Party/FatFs/src</IncludePath>
+              <IncludePath>../Inc;                                    ../Drivers/STM32F4xx_HAL_Driver/Inc;                                    ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;                                    ../Middlewares/Third_Party/FreeRTOS/Source/include;                                    ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;                                    ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;                                    ../Drivers/CMSIS/Device/ST/STM32F4xx/Include;                                    ../Drivers/CMSIS/Include;     ../Middlewares/Third_Party/FatFs/src;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Inc</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -351,7 +352,7 @@
             <NoWarn>0</NoWarn>
             <uSurpInc>0</uSurpInc>
             <useXO>0</useXO>
-            <uClangAs>0</uClangAs>
+            <ClangAsOpt>4</ClangAsOpt>
             <VariousControls>
               <MiscControls></MiscControls>
               <Define></Define>
@@ -453,6 +454,26 @@
               <FilePath>../Src/usart.c</FilePath>
             </File>
             <File>
+              <FileName>usb_device.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Src/usb_device.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_conf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Src/usbd_conf.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_desc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Src/usbd_desc.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_storage_if.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Src/usbd_storage_if.c</FilePath>
+            </File>
+            <File>
               <FileName>stm32f4xx_it.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Src/stm32f4xx_it.c</FilePath>
@@ -472,6 +493,21 @@
         <Group>
           <GroupName>Drivers/STM32F4xx_HAL_Driver</GroupName>
           <Files>
+            <File>
+              <FileName>stm32f4xx_hal_pcd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_hal_pcd_ex.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd_ex.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_ll_usb.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c</FilePath>
+            </File>
             <File>
               <FileName>stm32f4xx_hal_rcc.c</FileName>
               <FileType>1</FileType>
@@ -655,6 +691,46 @@
           </Files>
         </Group>
         <Group>
+          <GroupName>Middlewares/USB_Device_Library</GroupName>
+          <Files>
+            <File>
+              <FileName>usbd_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_ctlreq.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_ioreq.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_msc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_msc_bot.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_bot.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_msc_data.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_data.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbd_msc_scsi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_scsi.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
           <GroupName>::CMSIS</GroupName>
         </Group>
       </Groups>
@@ -673,5 +749,20 @@
     </components>
     <files/>
   </RTE>
+
+  <LayerInfo>
+    <Layers>
+      <Layer>
+        <LayName>&lt;Project Info&gt;</LayName>
+        <LayDesc></LayDesc>
+        <LayUrl></LayUrl>
+        <LayKeys></LayKeys>
+        <LayCat></LayCat>
+        <LayLic></LayLic>
+        <LayTarg>0</LayTarg>
+        <LayPrjMark>1</LayPrjMark>
+      </Layer>
+    </Layers>
+  </LayerInfo>
 
 </Project>

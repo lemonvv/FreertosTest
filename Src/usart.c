@@ -492,7 +492,7 @@ extern osMutexId_t MutexPrintfHandle;
 void Usart1_Send_Str(char *str)
 {
 
-    Usart1_DMA_Send_Datas((uint8_t *)str, strlen(str));
+    Usart1_DMA_Send_Data((uint8_t *)str, strlen(str));
 
 }
 

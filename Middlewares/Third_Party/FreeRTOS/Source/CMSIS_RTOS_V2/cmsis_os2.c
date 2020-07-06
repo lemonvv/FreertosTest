@@ -1495,12 +1495,10 @@ osStatus_t osSemaphoreAcquire (osSemaphoreId_t semaphore_id, uint32_t timeout) {
 
   if (hSemaphore == NULL) {
     stat = osErrorParameter;
-    printf("err 0\r\n");
   }
   else if (IS_IRQ()) {
     if (timeout != 0U) {
       stat = osErrorParameter;
-      printf("err 1\r\n");
     }
     else {
       yield = pdFALSE;
