@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=F:/work/huasi/GDM/FreertosTest/Inc
+HeaderPath=F:/work/GDM/FreertosTest/Inc
 HeaderFiles=gpio.h;dma.h;FreeRTOSConfig.h;usart.h;stm32f4xx_it.h;stm32f4xx_hal_conf.h;main.h;ffconf.h;user_diskio.h;fatfs.h;spi.h;tim.h;usb_device.h;usbd_conf.h;usbd_desc.h;usbd_storage_if.h;
-SourcePath=F:/work/huasi/GDM/FreertosTest/Src
+SourcePath=F:/work/GDM/FreertosTest/Src
 SourceFiles=gpio.c;dma.c;freertos.c;usart.c;stm32f4xx_it.c;stm32f4xx_hal_msp.c;stm32f4xx_hal_timebase_tim.c;main.c;user_diskio.c;fatfs.c;spi.c;tim.c;usb_device.c;usbd_conf.c;usbd_desc.c;usbd_storage_if.c;
 
 [PreviousLibFiles]

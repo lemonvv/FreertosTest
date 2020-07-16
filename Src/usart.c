@@ -144,17 +144,17 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     /* USART1 clock enable */
     __HAL_RCC_USART1_CLK_ENABLE();
   
-    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
     /**USART1 GPIO Configuration    
-    PB6     ------> USART1_TX
-    PB7     ------> USART1_RX 
+    PA9     ------> USART1_TX
+    PA10     ------> USART1_RX 
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_7;
+    GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_10;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     /* USART1 DMA Init */
     /* USART1_RX Init */
@@ -311,10 +311,10 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
     __HAL_RCC_USART1_CLK_DISABLE();
   
     /**USART1 GPIO Configuration    
-    PB6     ------> USART1_TX
-    PB7     ------> USART1_RX 
+    PA9     ------> USART1_TX
+    PA10     ------> USART1_RX 
     */
-    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_6|GPIO_PIN_7);
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9|GPIO_PIN_10);
 
     /* USART1 DMA DeInit */
     HAL_DMA_DeInit(uartHandle->hdmarx);
@@ -722,12 +722,14 @@ void uart_rxcallback(UART_T *_uartp)
 void usart_send_data_queue(UART_T *_wuart, UART_T *_ruart)
 {
     uint8_t data;
+    //uint16_t len = queue_get_len(&_ruart->rx);
     while (queue_get_len(&_ruart->rx))
     {
         queue_read_char(&_ruart->rx, &data);
         queue_write_char(&_wuart->tx, &data);
     }
-    SET_BIT(_wuart->uart->CR1, USART_CR1_TXEIE);	/* 使能发送中断*/
+    if(queue_get_len(&_wuart->tx) > 0)
+        SET_BIT(_wuart->uart->CR1, USART_CR1_TXEIE);	/* 使能发送中断*/
 }
 
 /*
@@ -745,7 +747,8 @@ void usart_send_data(UART_T *_wuart, uint8_t *buf, uint16_t len)
         len--;
         count++;
     }
-    SET_BIT(_wuart->uart->CR1, USART_CR1_TXEIE);	/* 使能发送中断*/
+    if(count > 0)
+        SET_BIT(_wuart->uart->CR1, USART_CR1_TXEIE);	/* 使能发送中断*/
 }
 
 /* 把buf数据的len长度写进 _wuart 的接收缓冲区*/

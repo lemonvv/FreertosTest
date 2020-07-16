@@ -76,7 +76,7 @@ osThreadId_t LteTaskHandle;
 const osThreadAttr_t LteTask_attributes = {
   .name = "LteTask",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 256 * 4
+  .stack_size = 512 * 4
 };
 /* Definitions for myTaskUsart3 */
 osThreadId_t myTaskUsart3Handle;
@@ -217,6 +217,9 @@ void StartDefaultTask(void *argument)
 {
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
+  Usart1_Send_Str("hello \r\n");
+  Usart1_Send_Str("1111 \r\n");
+  Usart1_Send_Str("2222 \r\n");
   /* USER CODE BEGIN StartDefaultTask */
     /* Infinite loop */
     for (;;)
@@ -286,12 +289,8 @@ void StartTaskLte(void *argument)
   /* USER CODE BEGIN StartTaskLte */
     tset_fatfs();
     /* Infinite loop */
-    Usart1_Send_Str("hello \r\n");
-
-    Usart1_Send_Str("1111 \r\n");
+    
     printf("end\r\n");
-
-    Usart1_Send_Str("2222 \r\n");
     for (;;)
     {
         //ec20_run();

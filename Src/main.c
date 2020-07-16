@@ -82,7 +82,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+    usart_val_int();
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -102,7 +102,7 @@ int main(void)
   MX_TIM2_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
-    usart_val_int();
+    
     Usart_IRQen_Init();
   /* USER CODE END 2 */
 
